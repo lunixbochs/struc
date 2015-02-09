@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/lunixbochs/struc.svg?branch=master)](https://travis-ci.org/lunixbochs/struc)
+
 struc
 ====
 
