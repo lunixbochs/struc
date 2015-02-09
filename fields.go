@@ -1,12 +1,23 @@
 package struc
 
 import (
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
 )
 
 type Fields []*Field
+
+func (f Fields) SetByteOrder(order int) error {
+	if _, ok := orderNames[order]; !ok {
+		return fmt.Errorf("unknown byte order enum %d", order)
+	}
+	for _, field := range f {
+		field.Order = order
+	}
+	return nil
+}
 
 func (f Fields) String() string {
 	fields := make([]string, len(f))
