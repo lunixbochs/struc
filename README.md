@@ -3,23 +3,26 @@
 struc
 ====
 
-Binary (un)packing for Go inspired by [Python's struct module](https://docs.python.org/2/library/struct.html).
+Better binary packing for Go.
 
-Struc uses reflection extensively and considers usability above performance. That said, it does cache reflection data and aims to be competitive with `encoding/binary` in every way.
+Struc considers usability above performance. That said, it does cache reflection data and aims to be competitive with `encoding/binary` in every way.
 
-Struct tag:
+Example struct:
 
 ```Go
 type Example struct {
-    Var int `sizeof:"Str" big int32`
-    Str string
+    Var   int `sizeof:"Str" big int32`
+    Str   string
     Weird []byte `big [8]int64`
+    Var   []int `big []int32`
 }
 ```
 
+Struct tags:
+
  - `sizeof`: Indicates this field is a number used to track the length of a another field. Sizeof fields are automatically updated on `Pack()` based on the current length of the tracked field, and are used to size the target field during `Unpack()`.
- - At the end of the tag, bare words (anything not in the `key:"value"` format) will be parsed as type and endianness.
-   - Example: `Var []int "big []int32"` will pack Var as a slice of big-endian int32.
+ - At the end of a tag string, bare words will be parsed as type and endianness.
+   - Example: `Var []int "big []int32"` will pack Var as a big-endian slice of int32.
 
 Endian formats:
 
@@ -32,18 +35,16 @@ Recognized types:
  - `pad` - this type ignores field contents and is backed by a `[length]byte` containing nulls
  - `bool`
  - `byte`
- - `int8`
- - `uint8`
- - `int16`
- - `uint16`
- - `int32`
- - `uint32`
- - `int64`
- - `uint64`
+ - `int8`, `uint8`
+ - `int16`, `uint16`
+ - `int32`, `uint32`
+ - `int64`, `uint64`
  - `float32`
  - `float64`
 
-Types can be indicated as slices using `[]` syntax. Example: `[]int64`, `[8]int32`. Bare slice types (with no specified size) must have a linked `Sizeof` field to pack/unpack.
+Types can be indicated as slices using `[]` syntax. Example: `[]int64`, `[8]int32`.
+
+Bare slice types (those with no `[size]`) must have a linked `Sizeof` field.
 
 If a field is private, it will be packed and unpacked with a null value. Fields cannot be ignored when packing.
 
@@ -64,7 +65,7 @@ type Example struct {
     // but is stored as a native int in the struct
     B int `int16`
 
-    // the sizeof tag links a buffer's size to a field
+    // the sizeof tag links a buffer's size to any int field
     Size int `sizeof:"Str" little int8`
     Str  string
 
