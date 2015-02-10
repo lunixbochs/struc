@@ -25,7 +25,7 @@ Endian formats:
 
  - `big`
  - `little`
- - `native`
+ - `native` (default)
 
 Recognized types:
 
