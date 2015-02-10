@@ -3,11 +3,21 @@
 struc
 ====
 
-Binary (un)packing for Go based on [Python's struct module](https://docs.python.org/2/library/struct.html). This library uses reflection extensively and considers usability above performance.
+Binary (un)packing for Go inspired by [Python's struct module](https://docs.python.org/2/library/struct.html).
+
+Struc uses reflection extensively and considers usability above performance. That said, it does cache reflection data and aims to be competitive with `encoding/binary` in every way.
 
 Struct tag:
 
- - `sizeof`: Indicates this field is a number used to track the length of a another field (a `[]byte` or `string`). This field is automatically updated on `Pack()`, and is used to determine how many bytes to read during `Unpack()`.
+```Go
+type Example struct {
+    Var int `sizeof:"Str" big int32`
+    Str string
+    Weird []byte `big [8]int64`
+}
+```
+
+ - `sizeof`: Indicates this field is a number used to track the length of a another field. Sizeof fields are automatically updated on `Pack()` based on the current length of the tracked field, and are used to size the target field during `Unpack()`.
  - At the end of the tag, bare words (anything not in the `key:"value"` format) will be parsed as type and endianness.
    - Example: `Var []int "big []int32"` will pack Var as a slice of big-endian int32.
 
@@ -19,7 +29,7 @@ Endian formats:
 
 Recognized types:
 
- - `pad`
+ - `pad` - this type ignores field contents and is backed by a `[length]byte` containing nulls
  - `bool`
  - `byte`
  - `int8`
@@ -32,6 +42,8 @@ Recognized types:
  - `uint64`
  - `float32`
  - `float64`
+
+Types can be indicated as slices using `[]` syntax. Example: `[]int64`, `[8]int32`. Bare slice types (with no specified size) must have a linked `Sizeof` field to pack/unpack.
 
 If a field is private, it will be packed and unpacked with a null value. Fields cannot be ignored when packing.
 
@@ -46,7 +58,7 @@ import (
 )
 
 type Example struct {
-    A int `[]int big`
+    A int `big`
 
     // B will be encoded/decoded as a 16-bit int (a "short")
     // but is stored as a native int in the struct
