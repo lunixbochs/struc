@@ -2,6 +2,7 @@ package struc
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"math"
@@ -11,8 +12,9 @@ import (
 type Field struct {
 	Index    int
 	Type     int
+	Slice    bool
 	Len      int
-	Order    int
+	Order    binary.ByteOrder
 	Sizeof   string
 	Sizefrom int
 }
@@ -22,9 +24,8 @@ func (f *Field) String() string {
 	if f.Type == Pad {
 		return fmt.Sprintf("{type: Pad, len: %d}", f.Len)
 	} else {
-		order := orderNames[f.Order]
 		typeName := typeNames[f.Type]
-		out = fmt.Sprintf("%d, type: %s, order: %s", f.Index, typeName, order)
+		out = fmt.Sprintf("type: %s, order: %v", typeName, f.Order)
 	}
 	if f.Sizefrom > -1 {
 		out += fmt.Sprintf(", sizefrom: %d", f.Sizefrom)
@@ -37,13 +38,19 @@ func (f *Field) String() string {
 	return "{" + out + "}"
 }
 
-func (f *Field) Pack(w io.Writer, val reflect.Value) error {
+func (f *Field) packVal(w io.Writer, val reflect.Value, length int) error {
 	var buf []byte
-	order := getByteEncoder(f.Order)
+	order := f.Order
 	switch f.Type {
-	case Bool, Char, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64:
+	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64:
 		buf = make([]byte, f.Size())
-		n := val.Int()
+		var n uint64
+		switch val.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			n = uint64(val.Int())
+		default:
+			n = val.Uint()
+		}
 		switch f.Type {
 		case Bool:
 			if n != 0 {
@@ -51,7 +58,7 @@ func (f *Field) Pack(w io.Writer, val reflect.Value) error {
 			} else {
 				buf[0] = 0
 			}
-		case Char, Int8, Uint8:
+		case Int8, Uint8:
 			buf[0] = byte(n)
 		case Int16, Uint16:
 			order.PutUint16(buf, uint16(n))
@@ -70,7 +77,7 @@ func (f *Field) Pack(w io.Writer, val reflect.Value) error {
 			order.PutUint64(buf, math.Float64bits(n))
 		}
 	case Pad:
-		buf = bytes.Repeat([]byte{0}, f.Len)
+		buf = bytes.Repeat([]byte{0}, length)
 	case String, PascalString:
 		switch val.Kind() {
 		case reflect.String:
@@ -90,18 +97,37 @@ func (f *Field) Pack(w io.Writer, val reflect.Value) error {
 	return err
 }
 
-func (f *Field) Unpack(r io.Reader, val reflect.Value) error {
-	order := getByteEncoder(f.Order)
+func (f *Field) Pack(w io.Writer, val reflect.Value, length int) error {
+	if !val.CanSet() {
+		buf := bytes.Repeat([]byte{0}, f.Size()*length)
+		_, err := w.Write(buf)
+		return err
+	}
+	// TODO: will string <--> []byte happen here?
+	if f.Slice {
+		for i := 0; i < length; i++ {
+			if err := f.packVal(w, val.Index(i), 1); err != nil {
+				return err
+			}
+		}
+		return nil
+	} else {
+		return f.packVal(w, val, length)
+	}
+}
+
+func (f *Field) unpackVal(r io.Reader, val reflect.Value, length int) error {
+	order := f.Order
 	switch f.Type {
 	case Pad, String, PascalString:
 		if f.Type == PascalString {
-			length := []byte{0}
-			if _, err := io.ReadFull(r, length); err != nil {
+			lenByte := []byte{0}
+			if _, err := io.ReadFull(r, lenByte); err != nil {
 				return err
 			}
-			f.Len = int(length[0])
+			length = int(lenByte[0])
 		}
-		buf := make([]byte, f.Len)
+		buf := make([]byte, length)
 		_, err := io.ReadFull(r, buf)
 		if err != nil {
 			return err
@@ -112,22 +138,58 @@ func (f *Field) Unpack(r io.Reader, val reflect.Value) error {
 			// TODO: catch the panic and convert to error here?
 			val.SetBytes(buf)
 		}
-	case Bool, Char, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64, Float32, Float64:
+	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64, Float32, Float64:
 		buf := make([]byte, f.Size())
 		_, err := io.ReadFull(r, buf)
 		if err != nil {
 			return err
 		}
+		var n uint64
 		switch f.Type {
-		case Char, Int8, Uint8:
-			val.SetInt(int64(buf[0]))
+		case Int8, Uint8:
+			n = uint64(buf[0])
 		case Int16, Uint16:
-			val.SetInt(int64(order.Uint16(buf)))
+			n = uint64(order.Uint16(buf))
 		case Int32, Uint32:
-			val.SetInt(int64(order.Uint32(buf)))
+			n = uint64(order.Uint32(buf))
 		case Int64, Uint64:
-			val.SetInt(int64(order.Uint64(buf)))
+			n = uint64(order.Uint64(buf))
+		}
+		switch val.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			val.SetInt(int64(n))
+		default:
+			val.SetUint(n)
 		}
 	}
 	return nil
+}
+
+func (f *Field) Unpack(r io.Reader, val reflect.Value, length int) error {
+	if !val.CanSet() {
+		buf := make([]byte, f.Size()*length)
+		_, err := io.ReadFull(r, buf)
+		return err
+	}
+	if f.Slice {
+		str := (val.Kind() == reflect.String)
+		target := val
+		if str {
+			target = reflect.ValueOf(make([]byte, length))
+		} else if val.Cap() < length {
+			target = reflect.MakeSlice(val.Type(), length, length)
+			val.Set(target)
+		}
+		for i := 0; i < length; i++ {
+			if err := f.unpackVal(r, target.Index(i), 1); err != nil {
+				return err
+			}
+		}
+		if str {
+			val.SetString(string(target.Bytes()))
+		}
+		return nil
+	} else {
+		return f.unpackVal(r, val, length)
+	}
 }

@@ -7,14 +7,15 @@ import (
 )
 
 type Example struct {
-	A       int `pack:"5x i 5h s" order:"big"`
-	B, C, D int
-	Size    int `sizeof:"Str" order:"little"`
-	E       int `order:"big"`
-	Str     []byte
+	pad     []byte `[5]pad`
+	A       int    `int32 big`
+	B, C, D int    `uint16 big`
+	Size    int    `sizeof:"Str" little`
+	Str     string
+	Test    []byte `[4]byte`
 }
 
-var reference = &Example{1, 2, 3, 4, 5, 0, []byte("asdfasdf")}
+var reference = &Example{nil, 1, 2, 3, 4, 0, "asdfasdf", []byte("1234")}
 
 var referenceBytes = []byte{
 	0, 0, 0, 0, 0, // pad(5)
@@ -25,6 +26,7 @@ var referenceBytes = []byte{
 	8, 0, // int16(8) - little (sizeof str)
 	0, 0, // int16(0) - big
 	97, 115, 100, 102, 97, 115, 100, 102, // str (length 8)
+	49, 50, 51, 52, // [4]byte
 }
 
 func TestCodec(t *testing.T) {

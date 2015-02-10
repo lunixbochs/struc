@@ -1,64 +1,94 @@
 package struc
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strconv"
+	"strings"
 )
 
-func ParsePack(pack string) (Fields, error) {
-	index := 0
-	buf := []byte(pack)
-	var fields Fields
-	for len(buf) > 0 {
-		c := buf[0]
-		if c == ' ' {
-			buf = buf[1:]
-			continue
-		}
-		repeat := 1
-		// parse an int from the front of the buffer
-		intlen := 0
-		for c >= '0' && c <= '9' && intlen < len(buf) {
-			intlen++
-			c = buf[intlen]
-		}
-		if intlen > 0 {
-			var err error
-			repeat, err = strconv.Atoi(string(buf[:intlen]))
-			if err != nil {
-				return nil, err
-			}
-			buf = buf[intlen:]
-			if len(buf) == 0 {
-				return nil, errors.New("struc: ParsePack() exhausted buffer")
-			} else {
-				c = buf[0]
-			}
-		}
-		fieldType := 0
-		if v, ok := typeLookup[c]; ok {
-			fieldType = v
-		} else {
-			return nil, fmt.Errorf("struc: Unknown pack type: '%c'", c)
-		}
-		// append pad or string field of length `repeat`, or append the next field `repeat` times
-		if c == 's' {
-			fields = append(fields, &Field{Index: index, Type: fieldType, Len: repeat, Sizefrom: -1})
-			index++
-		} else if c == 'x' {
-			fields = append(fields, &Field{Index: -1, Type: fieldType, Len: repeat, Sizefrom: -1})
-		} else {
-			for i := 0; i < repeat; i++ {
-				fields = append(fields, &Field{Index: index, Type: fieldType, Sizefrom: -1})
-				index++
-			}
-		}
-		buf = buf[1:]
+var tagWordsRe = regexp.MustCompile(`(\[|\b)[^"]+\b+$`)
+
+func ParseTagWords(tag reflect.StructTag) []string {
+	matches := tagWordsRe.FindAllStringSubmatch(string(tag), -1)
+	if len(matches) > 0 {
+		return strings.Split(matches[0][0], " ")
 	}
-	return fields, nil
+	return nil
 }
+
+func TagByteOrder(tag reflect.StructTag) binary.ByteOrder {
+	words := ParseTagWords(tag)
+	for _, word := range words {
+		switch word {
+		case "big":
+			return binary.BigEndian
+		case "little":
+			return binary.LittleEndian
+		case "native":
+			return nativeByteOrder()
+		}
+	}
+	return nil
+}
+
+var typeLenRe = regexp.MustCompile(`^\[(\d*)\]`)
+
+func ParseFieldType(f reflect.StructField) (bool, int, int, error) {
+	var err error
+	slice := false
+	for _, word := range ParseTagWords(f.Tag) {
+		pureWord := typeLenRe.ReplaceAllLiteralString(word, "")
+		if typ, ok := typeLookup[pureWord]; ok {
+			length := 1
+			match := typeLenRe.FindAllStringSubmatch(word, -1)
+			if len(match) > 0 && len(match[0]) > 1 {
+				slice = true
+				first := match[0][1]
+				// length = -1 indicates a []slice
+				if first == "" {
+					length = -1
+				} else {
+					length, err = strconv.Atoi(first)
+					if err != nil {
+						return false, 0, 0, err
+					}
+				}
+			}
+			return slice, length, typ, nil
+		}
+	}
+	// fallback
+	kind := f.Type.Kind()
+	length := 1
+	switch kind {
+	case reflect.Array:
+		slice = true
+		length = f.Type.Len()
+		kind = f.Type.Elem().Kind()
+	case reflect.Slice:
+		slice = true
+		length = -1
+		kind = f.Type.Elem().Kind()
+	case reflect.String:
+		// strings pretend to be []byte
+		slice = true
+		length = -1
+		kind = reflect.Uint8
+	case reflect.Struct:
+		panic("struct nesting is not yet supported")
+	default:
+	}
+	if typ, ok := reflectTypeMap[kind]; ok {
+		return slice, length, typ, nil
+	}
+	return false, 0, 0, errors.New("Could not find field type.")
+}
+
+var fieldCache = make(map[reflect.Type]Fields)
 
 func ParseFields(data interface{}) (Fields, error) {
 	v := reflect.ValueOf(data)
@@ -66,40 +96,51 @@ func ParseFields(data interface{}) (Fields, error) {
 		v = v.Elem()
 		if v.Kind() == reflect.Struct {
 			t := v.Type()
+			if cached, ok := fieldCache[t]; ok {
+				return cached, nil
+			}
 			if v.NumField() < 1 {
 				return nil, errors.New("Struct has no fields.")
 			}
-			sizes := make(map[string]int)
-			// the first field sets the pack string, and the default byte order for all fields
-			first := t.Field(0).Tag
-			pack := first.Get("pack")
-			defaultOrder := first.Get("order")
-			fields, err := ParsePack(pack)
-			if err != nil {
-				return nil, err
+			sizeofMap := make(map[string]int)
+			fields := make(Fields, 0, v.NumField())
+			// the first field sets the default byte order
+			defaultOrder := TagByteOrder(t.Field(0).Tag)
+			if defaultOrder == nil {
+				defaultOrder = nativeByteOrder()
 			}
-			for _, f := range fields {
-				if f.Index < 0 {
-					continue
+			var err error
+			for i := 0; i < t.NumField(); i++ {
+				field := t.Field(i)
+				f := &Field{
+					Index:    i,
+					Order:    TagByteOrder(field.Tag),
+					Sizefrom: -1,
 				}
-				field := t.Field(f.Index)
-				order := field.Tag.Get("order")
-				if order == "" {
-					order = defaultOrder
+				f.Slice, f.Len, f.Type, err = ParseFieldType(field)
+				if err != nil {
+					return nil, err
+				}
+				if f.Order == nil {
+					f.Order = defaultOrder
 				}
 				sizeof := field.Tag.Get("sizeof")
 				if sizeof != "" {
 					if !v.FieldByName(sizeof).IsValid() {
 						return nil, fmt.Errorf("struc: `sizeof:\"%s\"` field does not exist", sizeof)
 					}
-					sizes[sizeof] = f.Index
+					sizeofMap[sizeof] = f.Index
 				}
-				f.Order = orderLookup[order]
 				f.Sizeof = sizeof
-				if sizefrom, ok := sizes[field.Name]; ok {
+				if sizefrom, ok := sizeofMap[field.Name]; ok {
 					f.Sizefrom = sizefrom
 				}
+				if f.Len == -1 && f.Sizefrom == -1 {
+					return nil, fmt.Errorf("struc: field `%s` is a slice with no length or Sizeof field", field.Name)
+				}
+				fields = append(fields, f)
 			}
+			fieldCache[t] = fields
 			return fields, nil
 		}
 	}

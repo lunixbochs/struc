@@ -2,13 +2,13 @@ package struc
 
 import (
 	"encoding/binary"
+	"reflect"
 	"unsafe"
 )
 
 const (
 	Pad = iota
 	Bool
-	Char
 	Int8
 	Uint8
 	Int16
@@ -23,82 +23,64 @@ const (
 	PascalString
 )
 
-var typeLookup = map[byte]int{
-	'x': Pad,
-	'?': Bool,
-	'c': Char,
-	'b': Int8,
-	'B': Uint8,
-	'h': Int16,
-	'H': Uint16,
-	'i': Int32,
-	'I': Uint32,
-	'q': Int64,
-	'Q': Uint64,
-	'f': Float32,
-	'd': Float64,
-	's': String,
-	'p': PascalString,
-}
-
-var typeRevLookup = map[int]byte{
-	Pad:          'x',
-	Bool:         '?',
-	Char:         'c',
-	Int8:         'b',
-	Uint8:        'B',
-	Int16:        'h',
-	Uint16:       'H',
-	Int32:        'i',
-	Uint32:       'I',
-	Int64:        'q',
-	Uint64:       'Q',
-	Float32:      'f',
-	Float64:      'd',
-	String:       's',
-	PascalString: 'p',
+var typeLookup = map[string]int{
+	"pad":     Pad,
+	"bool":    Bool,
+	"byte":    Uint8,
+	"int8":    Int8,
+	"uint8":   Uint8,
+	"int16":   Int16,
+	"uint16":  Uint16,
+	"int32":   Int32,
+	"uint32":  Uint32,
+	"int64":   Int64,
+	"uint64":  Uint64,
+	"float32": Float32,
+	"float64": Float64,
 }
 
 var typeNames = map[int]string{
-	Pad:          "Pad",
-	Bool:         "Bool",
-	Char:         "Char",
-	Int8:         "Int8",
-	Uint8:        "Uint8",
-	Int16:        "Int16",
-	Uint16:       "Uint16",
-	Int32:        "Int32",
-	Uint32:       "Uint32",
-	Int64:        "Int64",
-	Uint64:       "Uint64",
-	Float32:      "Float32",
-	Float64:      "Float64",
-	String:       "String",
-	PascalString: "PascalString",
+	Pad:     "pad",
+	Bool:    "bool",
+	Int8:    "int8",
+	Uint8:   "uint8",
+	Int16:   "int16",
+	Uint16:  "uint16",
+	Int32:   "int32",
+	Uint32:  "uint32",
+	Int64:   "int64",
+	Uint64:  "uint64",
+	Float32: "float32",
+	Float64: "float64",
 }
 
+var reflectTypeMap = map[reflect.Kind]int{
+	reflect.Bool:    Bool,
+	reflect.Int8:    Int8,
+	reflect.Int16:   Int16,
+	reflect.Int:     Int32,
+	reflect.Int32:   Int32,
+	reflect.Int64:   Int64,
+	reflect.Uint8:   Uint8,
+	reflect.Uint16:  Uint16,
+	reflect.Uint:    Uint32,
+	reflect.Uint32:  Uint32,
+	reflect.Uint64:  Uint64,
+	reflect.Float32: Float32,
+	reflect.Float64: Float64,
+}
+
+// byte order
 const (
 	Native = iota
 	Big
 	Little
 )
 
-var orderLookup = map[string]int{
-	"native": Native,
-	"big":    Big,
-	"little": Little,
-}
-
-var orderNames = map[int]string{
-	Native: "native",
-	Big:    "big",
-	Little: "little",
-}
-
 func (f *Field) Size() int {
 	size := 0
 	switch f.Type {
-	case Pad, Char, Int8, Uint8, Bool:
+	case Pad, Int8, Uint8, Bool:
 		size = 1
 	case Int16, Uint16:
 		size = 2
@@ -112,21 +94,11 @@ func (f *Field) Size() int {
 	return size
 }
 
-func getByteEncoder(order int) binary.ByteOrder {
-	if order == Native {
-		var i int16 = 0x0102
-		if *(*byte)(unsafe.Pointer(&i)) == 2 {
-			order = Little
-		} else {
-			order = Big
-		}
-	}
-	switch order {
-	case Big:
-		return binary.BigEndian
-	case Little:
+func nativeByteOrder() binary.ByteOrder {
+	var i int16 = 0x0102
+	if *(*byte)(unsafe.Pointer(&i)) == 2 {
 		return binary.LittleEndian
-	default:
-		panic("Invalid byte order")
+	} else {
+		return binary.BigEndian
 	}
 }

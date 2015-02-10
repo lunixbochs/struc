@@ -1,7 +1,7 @@
 package struc
 
 import (
-	"fmt"
+	"encoding/binary"
 	"io"
 	"reflect"
 	"strings"
@@ -9,14 +9,10 @@ import (
 
 type Fields []*Field
 
-func (f Fields) SetByteOrder(order int) error {
-	if _, ok := orderNames[order]; !ok {
-		return fmt.Errorf("unknown byte order enum %d", order)
-	}
+func (f Fields) SetByteOrder(order binary.ByteOrder) {
 	for _, field := range f {
 		field.Order = order
 	}
-	return nil
 }
 
 func (f Fields) String() string {
@@ -43,17 +39,19 @@ func (f Fields) Sizeof(data interface{}) int {
 
 func (f Fields) Pack(w io.Writer, data interface{}) error {
 	val := reflect.ValueOf(data).Elem()
-	for _, field := range f {
-		i := field.Index
+	for i, field := range f {
+		v := val.Field(i)
+		length := field.Len
+		if field.Slice && v.CanSet() {
+			length = v.Len()
+		} else if field.Sizefrom > -1 {
+			length = int(val.Field(field.Sizefrom).Int())
+		}
 		if field.Sizeof != "" {
 			length := val.FieldByName(field.Sizeof).Len()
-			val.Field(i).SetInt(int64(length))
+			v.SetInt(int64(length))
 		}
-		var v reflect.Value
-		if i >= 0 {
-			v = val.Field(i)
-		}
-		err := field.Pack(w, v)
+		err := field.Pack(w, v, length)
 		if err != nil {
 			return err
 		}
@@ -63,16 +61,13 @@ func (f Fields) Pack(w io.Writer, data interface{}) error {
 
 func (f Fields) Unpack(r io.Reader, data interface{}) error {
 	val := reflect.ValueOf(data).Elem()
-	for _, field := range f {
-		i := field.Index
+	for i, field := range f {
+		v := val.Field(i)
+		length := field.Len
 		if field.Sizefrom > -1 {
-			field.Len = int(val.Field(field.Sizefrom).Int())
+			length = int(val.Field(field.Sizefrom).Int())
 		}
-		var v reflect.Value
-		if i >= 0 {
-			v = val.Field(i)
-		}
-		err := field.Unpack(r, v)
+		err := field.Unpack(r, v, length)
 		if err != nil {
 			return err
 		}

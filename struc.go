@@ -1,6 +1,7 @@
 package struc
 
 import (
+	"encoding/binary"
 	"io"
 )
 
@@ -12,11 +13,10 @@ func Pack(w io.Writer, data interface{}) error {
 	return fields.Pack(w, data)
 }
 
-func PackWithOrder(w io.Writer, data interface{}, order int) error {
+// TODO: this is destructive with caching
+func PackWithOrder(w io.Writer, data interface{}, order binary.ByteOrder) error {
 	if fields, err := ParseFields(data); err == nil {
-		if err := fields.SetByteOrder(order); err != nil {
-			return err
-		}
+		fields.SetByteOrder(order)
 		return fields.Pack(w, data)
 	} else {
 		return err
@@ -31,14 +31,12 @@ func Unpack(r io.Reader, data interface{}) error {
 	return fields.Unpack(r, data)
 }
 
-func UnpackWithOrder(r io.Reader, data interface{}, order int) error {
+func UnpackWithOrder(r io.Reader, data interface{}, order binary.ByteOrder) error {
 	fields, err := ParseFields(data)
 	if err != nil {
 		return err
 	}
-	if err := fields.SetByteOrder(order); err != nil {
-		return err
-	}
+	fields.SetByteOrder(order)
 	return fields.Unpack(r, data)
 }
 
