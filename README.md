@@ -5,7 +5,7 @@ struc
 
 Struc exists to pack and unpack C-style structures from bytes, which is useful for binary files and network protocols. It could be considered an alternative to `encoding/binary`, which requires massive boilerplate for some similar operations.
 
-Take a look at an [example comparing `struc` and `encoding/binary`](https://bochs.info/p/gvmwy)
+Take a look at an [example comparing `struc` and `encoding/binary`](https://bochs.info/p/cxvm9)
 
 Struc considers usability first. That said, it does cache reflection data and aims to be competitive with `encoding/binary` struct packing in every way, including performance.
 
