@@ -123,18 +123,6 @@ func (f *Field) Pack(w io.Writer, val reflect.Value, length int) error {
 func (f *Field) unpackVal(r io.Reader, val reflect.Value, length int) error {
 	order := f.Order
 	switch f.Type {
-	case Pad, String:
-		buf := make([]byte, length)
-		_, err := io.ReadFull(r, buf)
-		if err != nil {
-			return err
-		}
-		if f.kind == reflect.String {
-			val.SetString(string(buf))
-		} else if val.IsValid() {
-			// TODO: catch the panic and convert to error here?
-			val.SetBytes(buf)
-		}
 	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64, Float32, Float64:
 		var tmp [8]byte
 		buf := tmp[:f.Size()]
