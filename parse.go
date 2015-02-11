@@ -55,11 +55,6 @@ func ParseField(f reflect.StructField) (fd *Field, err error) {
 		fd.Slice = true
 		fd.Len = -1
 		fd.kind = f.Type.Elem().Kind()
-	case reflect.String:
-		// strings pretend to be []byte
-		fd.Slice = true
-		fd.Len = -1
-		fd.kind = reflect.Uint8
 	case reflect.Struct:
 		panic("struc: struct nesting is not yet supported")
 	}

@@ -48,7 +48,7 @@ func (f *Field) packVal(w io.Writer, val reflect.Value, length int) error {
 	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64:
 		buf = make([]byte, f.Size())
 		var n uint64
-		switch val.Kind() {
+		switch f.kind {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			n = uint64(val.Int())
 		default:
@@ -82,7 +82,7 @@ func (f *Field) packVal(w io.Writer, val reflect.Value, length int) error {
 	case Pad:
 		buf = bytes.Repeat([]byte{0}, length)
 	case String:
-		switch val.Kind() {
+		switch f.kind {
 		case reflect.String:
 			buf = []byte(val.String())
 		default:
@@ -121,7 +121,7 @@ func (f *Field) unpackVal(r io.Reader, val reflect.Value, length int) error {
 		if err != nil {
 			return err
 		}
-		if val.Kind() == reflect.String {
+		if f.kind == reflect.String {
 			val.SetString(string(buf))
 		} else if val.IsValid() {
 			// TODO: catch the panic and convert to error here?
@@ -144,7 +144,7 @@ func (f *Field) unpackVal(r io.Reader, val reflect.Value, length int) error {
 		case Int64, Uint64:
 			n = uint64(order.Uint64(buf))
 		}
-		switch val.Kind() {
+		switch f.kind {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			val.SetInt(int64(n))
 		default:
@@ -161,7 +161,7 @@ func (f *Field) Unpack(r io.Reader, val reflect.Value, length int) error {
 		return err
 	}
 	if f.Slice {
-		str := (val.Kind() == reflect.String)
+		str := (f.kind == reflect.String)
 		target := val
 		if str {
 			target = reflect.ValueOf(make([]byte, length))

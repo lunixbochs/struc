@@ -67,6 +67,7 @@ var reflectTypeMap = map[reflect.Kind]int{
 	reflect.Uint64:  Uint64,
 	reflect.Float32: Float32,
 	reflect.Float64: Float64,
+	reflect.String:  String,
 }
 
 // byte order
