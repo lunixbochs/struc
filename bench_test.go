@@ -63,6 +63,27 @@ func BenchmarkStdlibEncode(b *testing.B) {
 	}
 }
 
+func BenchmarkManualEncode(b *testing.B) {
+	order := binary.BigEndian
+	s := benchStrucRef
+	for i := 0; i < b.N; i++ {
+		var buf bytes.Buffer
+		tmp := make([]byte, 29)
+		copy(tmp[0:5], s.Test[:])
+		order.PutUint32(tmp[5:9], uint32(s.A))
+		order.PutUint16(tmp[9:11], uint16(s.B))
+		order.PutUint16(tmp[11:13], uint16(s.C))
+		order.PutUint16(tmp[13:15], uint16(s.D))
+		copy(tmp[15:19], s.Test2[:])
+		order.PutUint32(tmp[19:23], uint32(s.Length))
+		copy(tmp[23:], s.Data)
+		_, err := buf.Write(tmp)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func BenchmarkDecode(b *testing.B) {
 	var out BenchExample
 	var buf bytes.Buffer
@@ -97,5 +118,24 @@ func BenchmarkStdlibDecode(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+func BenchmarkManualDecode(b *testing.B) {
+	var o BenchStrucExample
+	var buf bytes.Buffer
+	Pack(&buf, benchStrucRef)
+	tmp := buf.Bytes()
+	order := binary.BigEndian
+	for i := 0; i < b.N; i++ {
+		copy(o.Test[:], tmp[0:5])
+		o.A = int(order.Uint32(tmp[5:9]))
+		o.B = int(order.Uint16(tmp[9:11]))
+		o.C = int(order.Uint16(tmp[11:13]))
+		o.D = int(order.Uint16(tmp[13:15]))
+		copy(o.Test2[:], tmp[15:19])
+		o.Length = int(order.Uint32(tmp[19:23]))
+		o.Data = make([]byte, o.Length)
+		copy(o.Data, tmp[23:])
 	}
 }
