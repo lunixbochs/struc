@@ -17,6 +17,9 @@ type Field struct {
 	Order    binary.ByteOrder
 	Sizeof   string
 	Sizefrom int
+	// our offset in the struct, from reflect.StructField.Offset
+	offset uintptr
+	kind   reflect.Kind
 }
 
 func (f *Field) String() string {
@@ -103,7 +106,6 @@ func (f *Field) Pack(w io.Writer, val reflect.Value, length int) error {
 		_, err := w.Write(buf)
 		return err
 	}
-	// TODO: will string <--> []byte happen here?
 	if f.Slice {
 		for i := 0; i < length; i++ {
 			if err := f.packVal(w, val.Index(i), 1); err != nil {

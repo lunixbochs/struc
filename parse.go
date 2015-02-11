@@ -37,55 +37,58 @@ func TagByteOrder(tag reflect.StructTag) binary.ByteOrder {
 
 var typeLenRe = regexp.MustCompile(`^\[(\d*)\]`)
 
-func ParseFieldType(f reflect.StructField) (bool, int, int, error) {
-	var err error
-	slice := false
-	for _, word := range ParseTagWords(f.Tag) {
-		pureWord := typeLenRe.ReplaceAllLiteralString(word, "")
-		if typ, ok := typeLookup[pureWord]; ok {
-			length := 1
-			match := typeLenRe.FindAllStringSubmatch(word, -1)
-			if len(match) > 0 && len(match[0]) > 1 {
-				slice = true
-				first := match[0][1]
-				// length = -1 indicates a []slice
-				if first == "" {
-					length = -1
-				} else {
-					length, err = strconv.Atoi(first)
-					if err != nil {
-						return false, 0, 0, err
-					}
-				}
-			}
-			return slice, length, typ, nil
-		}
+func ParseField(f reflect.StructField) (fd *Field, err error) {
+	var ok bool
+	fd = &Field{
+		Len:      1,
+		Order:    TagByteOrder(f.Tag),
+		Sizefrom: -1,
+		Slice:    false,
+		kind:     f.Type.Kind(),
+		offset:   f.Offset,
 	}
-	// fallback
-	kind := f.Type.Kind()
-	length := 1
-	switch kind {
+	switch fd.kind {
 	case reflect.Array:
-		slice = true
-		length = f.Type.Len()
-		kind = f.Type.Elem().Kind()
+		fd.Slice = true
+		fd.Len = f.Type.Len()
+		fd.kind = f.Type.Elem().Kind()
 	case reflect.Slice:
-		slice = true
-		length = -1
-		kind = f.Type.Elem().Kind()
+		fd.Slice = true
+		fd.Len = -1
+		fd.kind = f.Type.Elem().Kind()
 	case reflect.String:
 		// strings pretend to be []byte
-		slice = true
-		length = -1
-		kind = reflect.Uint8
+		fd.Slice = true
+		fd.Len = -1
+		fd.kind = reflect.Uint8
 	case reflect.Struct:
-		panic("struct nesting is not yet supported")
-	default:
+		panic("struc: struct nesting is not yet supported")
 	}
-	if typ, ok := reflectTypeMap[kind]; ok {
-		return slice, length, typ, nil
+	// find a type in the struct tag
+	for _, word := range ParseTagWords(f.Tag) {
+		pureWord := typeLenRe.ReplaceAllLiteralString(word, "")
+		if fd.Type, ok = typeLookup[pureWord]; ok {
+			fd.Len = 1
+			match := typeLenRe.FindAllStringSubmatch(word, -1)
+			if len(match) > 0 && len(match[0]) > 1 {
+				fd.Slice = true
+				first := match[0][1]
+				// Field.Len = -1 indicates a []slice
+				if first == "" {
+					fd.Len = -1
+				} else {
+					fd.Len, err = strconv.Atoi(first)
+				}
+			}
+			return
+		}
 	}
-	return false, 0, 0, errors.New("Could not find field type.")
+	// the user didn't specify a type, or used an unknown type
+	if fd.Type, ok = reflectTypeMap[fd.kind]; ok {
+		return
+	}
+	err = errors.New("struc: Could not find field type.")
+	return
 }
 
 var fieldCache = make(map[reflect.Type]Fields)
@@ -100,7 +103,7 @@ func ParseFields(data interface{}) (Fields, error) {
 				return cached, nil
 			}
 			if v.NumField() < 1 {
-				return nil, errors.New("Struct has no fields.")
+				return nil, errors.New("struc: Struct has no fields.")
 			}
 			sizeofMap := make(map[string]int)
 			fields := make(Fields, 0, v.NumField())
@@ -109,18 +112,13 @@ func ParseFields(data interface{}) (Fields, error) {
 			if defaultOrder == nil {
 				defaultOrder = nativeByteOrder()
 			}
-			var err error
 			for i := 0; i < t.NumField(); i++ {
 				field := t.Field(i)
-				f := &Field{
-					Index:    i,
-					Order:    TagByteOrder(field.Tag),
-					Sizefrom: -1,
-				}
-				f.Slice, f.Len, f.Type, err = ParseFieldType(field)
+				f, err := ParseField(field)
 				if err != nil {
 					return nil, err
 				}
+				f.Index = i
 				if f.Order == nil {
 					f.Order = defaultOrder
 				}
