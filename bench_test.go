@@ -15,11 +15,11 @@ type BenchExample struct {
 }
 
 type BenchStrucExample struct {
-	Test    [5]byte `[5]byte`
-	A       int     `int32`
-	B, C, D int     `int16`
-	Test2   [4]byte `[4]byte`
-	Length  int     `sizeof:"Data" int32`
+	Test    [5]byte `struc:"[5]byte"`
+	A       int     `struc:"int32"`
+	B, C, D int     `struc:"int16"`
+	Test2   [4]byte `struc:"[4]byte"`
+	Length  int     `struc:"int32,sizeof=Data"`
 	Data    []byte
 }
 

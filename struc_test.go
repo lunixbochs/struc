@@ -7,12 +7,12 @@ import (
 )
 
 type Example struct {
-	Pad     []byte `[5]pad`
-	A       int    `int32 big`
-	B, C, D int    `uint16 big`
-	Size    int    `sizeof:"Str" little`
+	Pad     []byte `struc:"[5]pad"`
+	A       int    `struc:"int32"`
+	B, C, D int    `struc:"uint16"`
+	Size    int    `struc:"sizeof=Str,little"`
 	Str     string
-	Test    []byte `[4]byte`
+	Test    []byte `struc:"[4]byte"`
 }
 
 var reference = &Example{nil, 1, 2, 3, 4, 0, "asdfasdf", []byte("1234")}
