@@ -23,8 +23,7 @@ func (f Fields) String() string {
 	return "{" + strings.Join(fields, ", ") + "}"
 }
 
-func (f Fields) Sizeof(data interface{}) int {
-	val := reflect.ValueOf(data).Elem()
+func (f Fields) Sizeof(val reflect.Value) int {
 	size := 0
 	for _, field := range f {
 		switch field.Type {
