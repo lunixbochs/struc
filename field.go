@@ -81,19 +81,13 @@ func (f *Field) packVal(w io.Writer, val reflect.Value, length int) error {
 		}
 	case Pad:
 		buf = bytes.Repeat([]byte{0}, length)
-	case String, PascalString:
+	case String:
 		switch val.Kind() {
 		case reflect.String:
 			buf = []byte(val.String())
 		default:
-			// TODO: catch the panic here and turn it into an error?
+			// TODO: handle kind != bytes here
 			buf = val.Bytes()
-		}
-		if f.Type == PascalString {
-			if len(buf) > 255 {
-				return fmt.Errorf("struc: buffer size %d too long for pascal string")
-			}
-			buf = append([]byte{byte(len(buf))}, buf...)
 		}
 	}
 	_, err := w.Write(buf)
@@ -121,14 +115,7 @@ func (f *Field) Pack(w io.Writer, val reflect.Value, length int) error {
 func (f *Field) unpackVal(r io.Reader, val reflect.Value, length int) error {
 	order := f.Order
 	switch f.Type {
-	case Pad, String, PascalString:
-		if f.Type == PascalString {
-			lenByte := []byte{0}
-			if _, err := io.ReadFull(r, lenByte); err != nil {
-				return err
-			}
-			length = int(lenByte[0])
-		}
+	case Pad, String:
 		buf := make([]byte, length)
 		_, err := io.ReadFull(r, buf)
 		if err != nil {

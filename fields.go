@@ -28,7 +28,7 @@ func (f Fields) Sizeof(data interface{}) int {
 	size := 0
 	for _, field := range f {
 		switch field.Type {
-		case PascalString, String:
+		case String:
 			size += val.Field(field.Index).Len()
 		default:
 			size += field.Size()

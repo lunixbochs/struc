@@ -20,7 +20,6 @@ const (
 	Float32
 	Float64
 	String
-	PascalString
 )
 
 var typeLookup = map[string]int{
@@ -88,7 +87,7 @@ func (f *Field) Size() int {
 		size = 4
 	case Int64, Uint64, Float64:
 		size = 8
-	case String, PascalString:
+	case String:
 		size = 1 * f.Len
 	}
 	return size
