@@ -28,8 +28,6 @@ func tagByteOrder(tag reflect.StructTag) binary.ByteOrder {
 			return binary.BigEndian
 		case "little":
 			return binary.LittleEndian
-		case "native":
-			return nativeByteOrder()
 		}
 	}
 	return nil
@@ -101,7 +99,7 @@ func parseFields(v reflect.Value) (Fields, error) {
 	// the first field sets the default byte order
 	defaultOrder := tagByteOrder(t.Field(0).Tag)
 	if defaultOrder == nil {
-		defaultOrder = nativeByteOrder()
+		defaultOrder = binary.BigEndian
 	}
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)

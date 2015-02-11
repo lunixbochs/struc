@@ -1,9 +1,7 @@
 package struc
 
 import (
-	"encoding/binary"
 	"reflect"
-	"unsafe"
 )
 
 const (
@@ -92,13 +90,4 @@ func (f *Field) Size() int {
 		size = 1 * f.Len
 	}
 	return size
-}
-
-func nativeByteOrder() binary.ByteOrder {
-	var i int16 = 0x0102
-	if *(*byte)(unsafe.Pointer(&i)) == 2 {
-		return binary.LittleEndian
-	} else {
-		return binary.BigEndian
-	}
 }

@@ -13,10 +13,10 @@ Example struct:
 
 ```Go
 type Example struct {
-    Var   int `sizeof:"Str" big int32`
+    Var   int `sizeof:"Str" int32`
     Str   string
-    Weird []byte `big [8]int64`
-    Var   []int `big []int32`
+    Weird []byte `[8]int64`
+    Var   []int `little []int32`
 }
 ```
 
@@ -24,13 +24,12 @@ Struct tags:
 
  - `sizeof`: Indicates this field is a number used to track the length of a another field. Sizeof fields are automatically updated on `Pack()` based on the current length of the tracked field, and are used to size the target field during `Unpack()`.
  - At the end of a tag string, bare words will be parsed as type and endianness.
-   - Example: `Var []int "big []int32"` will pack Var as a big-endian slice of int32.
+   - Example: `Var []int "little []int32"` will pack Var as a little-endian slice of int32.
 
 Endian formats:
 
- - `big`
+ - `big` (default)
  - `little`
- - `native` (default)
 
 Recognized types:
 
