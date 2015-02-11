@@ -7,7 +7,7 @@ import (
 )
 
 type Example struct {
-	pad     []byte `[5]pad`
+	Pad     []byte `[5]pad`
 	A       int    `int32 big`
 	B, C, D int    `uint16 big`
 	Size    int    `sizeof:"Str" little`

@@ -37,12 +37,14 @@ func (f Fields) Sizeof(data interface{}) int {
 	return size
 }
 
-func (f Fields) Pack(w io.Writer, data interface{}) error {
-	val := reflect.ValueOf(data).Elem()
+func (f Fields) Pack(w io.Writer, val reflect.Value) error {
 	for i, field := range f {
+		if !field.CanSet {
+			continue
+		}
 		v := val.Field(i)
 		length := field.Len
-		if field.Slice && v.CanSet() {
+		if field.Slice && field.CanSet && field.Type != Pad {
 			length = v.Len()
 		} else if field.Sizefrom != nil {
 			length = int(val.FieldByIndex(field.Sizefrom).Int())
@@ -59,9 +61,11 @@ func (f Fields) Pack(w io.Writer, data interface{}) error {
 	return nil
 }
 
-func (f Fields) Unpack(r io.Reader, data interface{}) error {
-	val := reflect.ValueOf(data).Elem()
+func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 	for i, field := range f {
+		if !field.CanSet {
+			continue
+		}
 		v := val.Field(i)
 		length := field.Len
 		if field.Sizefrom != nil {

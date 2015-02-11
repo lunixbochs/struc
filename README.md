@@ -48,7 +48,7 @@ Types can be indicated as slices using `[]` syntax. Example: `[]int64`, `[8]int3
 
 Bare slice types (those with no `[size]`) must have a linked `Sizeof` field.
 
-If a field is private, it will be packed and unpacked with a null value. Fields cannot be ignored when packing.
+Private fields are ignored when packing and unpacking.
 
 Example code:
 

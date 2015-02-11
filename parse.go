@@ -12,7 +12,7 @@ import (
 
 var tagWordsRe = regexp.MustCompile(`(\[|\b)[^"]+\b+$`)
 
-func ParseTagWords(tag reflect.StructTag) []string {
+func parseTagWords(tag reflect.StructTag) []string {
 	matches := tagWordsRe.FindAllStringSubmatch(string(tag), -1)
 	if len(matches) > 0 {
 		return strings.Split(matches[0][0], " ")
@@ -20,8 +20,8 @@ func ParseTagWords(tag reflect.StructTag) []string {
 	return nil
 }
 
-func TagByteOrder(tag reflect.StructTag) binary.ByteOrder {
-	words := ParseTagWords(tag)
+func tagByteOrder(tag reflect.StructTag) binary.ByteOrder {
+	words := parseTagWords(tag)
 	for _, word := range words {
 		switch word {
 		case "big":
@@ -37,11 +37,12 @@ func TagByteOrder(tag reflect.StructTag) binary.ByteOrder {
 
 var typeLenRe = regexp.MustCompile(`^\[(\d*)\]`)
 
-func ParseField(f reflect.StructField) (fd *Field, err error) {
+func parseField(f reflect.StructField) (fd *Field, err error) {
 	var ok bool
 	fd = &Field{
+		Name:   f.Name,
 		Len:    1,
-		Order:  TagByteOrder(f.Tag),
+		Order:  tagByteOrder(f.Tag),
 		Slice:  false,
 		kind:   f.Type.Kind(),
 		offset: f.Offset,
@@ -59,7 +60,7 @@ func ParseField(f reflect.StructField) (fd *Field, err error) {
 		panic("struc: struct nesting is not yet supported")
 	}
 	// find a type in the struct tag
-	for _, word := range ParseTagWords(f.Tag) {
+	for _, word := range parseTagWords(f.Tag) {
 		pureWord := typeLenRe.ReplaceAllLiteralString(word, "")
 		if fd.Type, ok = typeLookup[pureWord]; ok {
 			fd.Len = 1
@@ -87,55 +88,49 @@ func ParseField(f reflect.StructField) (fd *Field, err error) {
 
 var fieldCache = make(map[reflect.Type]Fields)
 
-func ParseFields(data interface{}) (Fields, error) {
-	v := reflect.ValueOf(data)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-		if v.Kind() == reflect.Struct {
-			t := v.Type()
-			if cached, ok := fieldCache[t]; ok {
-				return cached, nil
-			}
-			if v.NumField() < 1 {
-				return nil, errors.New("struc: Struct has no fields.")
-			}
-			sizeofMap := make(map[string][]int)
-			fields := make(Fields, 0, v.NumField())
-			// the first field sets the default byte order
-			defaultOrder := TagByteOrder(t.Field(0).Tag)
-			if defaultOrder == nil {
-				defaultOrder = nativeByteOrder()
-			}
-			for i := 0; i < t.NumField(); i++ {
-				field := t.Field(i)
-				f, err := ParseField(field)
-				if err != nil {
-					return nil, err
-				}
-				f.Index = i
-				if f.Order == nil {
-					f.Order = defaultOrder
-				}
-				sizeof := field.Tag.Get("sizeof")
-				if sizeof != "" {
-					target, ok := t.FieldByName(sizeof)
-					if !ok {
-						return nil, fmt.Errorf("struc: `sizeof:\"%s\"` field does not exist", sizeof)
-					}
-					f.Sizeof = target.Index
-					sizeofMap[sizeof] = field.Index
-				}
-				if sizefrom, ok := sizeofMap[field.Name]; ok {
-					f.Sizefrom = sizefrom
-				}
-				if f.Len == -1 && f.Sizefrom == nil {
-					return nil, fmt.Errorf("struc: field `%s` is a slice with no length or Sizeof field", field.Name)
-				}
-				fields = append(fields, f)
-			}
-			fieldCache[t] = fields
-			return fields, nil
-		}
+func parseFields(v reflect.Value) (Fields, error) {
+	t := v.Type()
+	if cached, ok := fieldCache[t]; ok {
+		return cached, nil
 	}
-	return nil, fmt.Errorf("struc: ParseFields(%s), expecting pointer to struct", v.Kind().String())
+	if v.NumField() < 1 {
+		return nil, errors.New("struc: Struct has no fields.")
+	}
+	sizeofMap := make(map[string][]int)
+	fields := make(Fields, 0, v.NumField())
+	// the first field sets the default byte order
+	defaultOrder := tagByteOrder(t.Field(0).Tag)
+	if defaultOrder == nil {
+		defaultOrder = nativeByteOrder()
+	}
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		f, err := parseField(field)
+		if err != nil {
+			return nil, err
+		}
+		f.CanSet = v.Field(i).CanSet()
+		f.Index = i
+		if f.Order == nil {
+			f.Order = defaultOrder
+		}
+		sizeof := field.Tag.Get("sizeof")
+		if sizeof != "" {
+			target, ok := t.FieldByName(sizeof)
+			if !ok {
+				return nil, fmt.Errorf("struc: `sizeof:\"%s\"` field does not exist", sizeof)
+			}
+			f.Sizeof = target.Index
+			sizeofMap[sizeof] = field.Index
+		}
+		if sizefrom, ok := sizeofMap[field.Name]; ok {
+			f.Sizefrom = sizefrom
+		}
+		if f.Len == -1 && f.Sizefrom == nil {
+			return nil, fmt.Errorf("struc: field `%s` is a slice with no length or Sizeof field", field.Name)
+		}
+		fields = append(fields, f)
+	}
+	fieldCache[t] = fields
+	return fields, nil
 }
