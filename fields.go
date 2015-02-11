@@ -44,11 +44,11 @@ func (f Fields) Pack(w io.Writer, data interface{}) error {
 		length := field.Len
 		if field.Slice && v.CanSet() {
 			length = v.Len()
-		} else if field.Sizefrom > -1 {
-			length = int(val.Field(field.Sizefrom).Int())
+		} else if field.Sizefrom != nil {
+			length = int(val.FieldByIndex(field.Sizefrom).Int())
 		}
-		if field.Sizeof != "" {
-			length := val.FieldByName(field.Sizeof).Len()
+		if field.Sizeof != nil {
+			length := val.FieldByIndex(field.Sizeof).Len()
 			v.SetInt(int64(length))
 		}
 		err := field.Pack(w, v, length)
@@ -64,8 +64,8 @@ func (f Fields) Unpack(r io.Reader, data interface{}) error {
 	for i, field := range f {
 		v := val.Field(i)
 		length := field.Len
-		if field.Sizefrom > -1 {
-			length = int(val.Field(field.Sizefrom).Int())
+		if field.Sizefrom != nil {
+			length = int(val.FieldByIndex(field.Sizefrom).Int())
 		}
 		err := field.Unpack(r, v, length)
 		if err != nil {

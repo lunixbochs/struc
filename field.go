@@ -15,8 +15,8 @@ type Field struct {
 	Slice    bool
 	Len      int
 	Order    binary.ByteOrder
-	Sizeof   string
-	Sizefrom int
+	Sizeof   []int
+	Sizefrom []int
 	// our offset in the struct, from reflect.StructField.Offset
 	offset uintptr
 	kind   reflect.Kind
@@ -30,13 +30,13 @@ func (f *Field) String() string {
 		typeName := typeNames[f.Type]
 		out = fmt.Sprintf("type: %s, order: %v", typeName, f.Order)
 	}
-	if f.Sizefrom > -1 {
-		out += fmt.Sprintf(", sizefrom: %d", f.Sizefrom)
+	if f.Sizefrom != nil {
+		out += fmt.Sprintf(", sizefrom: %v", f.Sizefrom)
 	} else if f.Len > 0 {
 		out += fmt.Sprintf(", len: %d", f.Len)
 	}
-	if f.Sizeof != "" {
-		out += fmt.Sprintf(", sizeof: %s", f.Sizeof)
+	if f.Sizeof != nil {
+		out += fmt.Sprintf(", sizeof: %v", f.Sizeof)
 	}
 	return "{" + out + "}"
 }

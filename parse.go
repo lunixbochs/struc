@@ -40,12 +40,11 @@ var typeLenRe = regexp.MustCompile(`^\[(\d*)\]`)
 func ParseField(f reflect.StructField) (fd *Field, err error) {
 	var ok bool
 	fd = &Field{
-		Len:      1,
-		Order:    TagByteOrder(f.Tag),
-		Sizefrom: -1,
-		Slice:    false,
-		kind:     f.Type.Kind(),
-		offset:   f.Offset,
+		Len:    1,
+		Order:  TagByteOrder(f.Tag),
+		Slice:  false,
+		kind:   f.Type.Kind(),
+		offset: f.Offset,
 	}
 	switch fd.kind {
 	case reflect.Array:
@@ -105,7 +104,7 @@ func ParseFields(data interface{}) (Fields, error) {
 			if v.NumField() < 1 {
 				return nil, errors.New("struc: Struct has no fields.")
 			}
-			sizeofMap := make(map[string]int)
+			sizeofMap := make(map[string][]int)
 			fields := make(Fields, 0, v.NumField())
 			// the first field sets the default byte order
 			defaultOrder := TagByteOrder(t.Field(0).Tag)
@@ -124,16 +123,17 @@ func ParseFields(data interface{}) (Fields, error) {
 				}
 				sizeof := field.Tag.Get("sizeof")
 				if sizeof != "" {
-					if !v.FieldByName(sizeof).IsValid() {
+					target, ok := t.FieldByName(sizeof)
+					if !ok {
 						return nil, fmt.Errorf("struc: `sizeof:\"%s\"` field does not exist", sizeof)
 					}
-					sizeofMap[sizeof] = f.Index
+					f.Sizeof = target.Index
+					sizeofMap[sizeof] = field.Index
 				}
-				f.Sizeof = sizeof
 				if sizefrom, ok := sizeofMap[field.Name]; ok {
 					f.Sizefrom = sizefrom
 				}
-				if f.Len == -1 && f.Sizefrom == -1 {
+				if f.Len == -1 && f.Sizefrom == nil {
 					return nil, fmt.Errorf("struc: field `%s` is a slice with no length or Sizeof field", field.Name)
 				}
 				fields = append(fields, f)
