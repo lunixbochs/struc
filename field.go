@@ -11,6 +11,8 @@ import (
 type Field struct {
 	Name     string
 	CanSet   bool
+	Struct   bool
+	Ptr      bool
 	Index    int
 	Type     int
 	Slice    bool
@@ -45,7 +47,16 @@ func (f *Field) String() string {
 func (f *Field) packVal(w io.Writer, val reflect.Value, length int) error {
 	var buf []byte
 	order := f.Order
+	if f.Ptr {
+		val = val.Elem()
+	}
 	switch f.Type {
+	case Struct:
+		fields, err := parseFields(val)
+		if err != nil {
+			return err
+		}
+		return fields.Pack(w, val)
 	case Bool, Int8, Int16, Int32, Uint8, Uint16, Uint32:
 		var n uint64
 		var tmp [4]byte
@@ -122,7 +133,16 @@ func (f *Field) Pack(w io.Writer, val reflect.Value, length int) error {
 
 func (f *Field) unpackVal(r io.Reader, val reflect.Value, length int) error {
 	order := f.Order
+	if f.Ptr {
+		val = val.Elem()
+	}
 	switch f.Type {
+	case Struct:
+		fields, err := parseFields(val)
+		if err != nil {
+			return err
+		}
+		return fields.Unpack(r, val)
 	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64, Float32, Float64:
 		var tmp [8]byte
 		buf := tmp[:f.Size()]

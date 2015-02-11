@@ -6,6 +6,10 @@ import (
 	"testing"
 )
 
+type Nested struct {
+	Test2 int
+}
+
 type Example struct {
 	Pad     []byte `struc:"[5]pad"`
 	A       int    `struc:"int32"`
@@ -13,9 +17,18 @@ type Example struct {
 	Size    int    `struc:"sizeof=Str,little"`
 	Str     string
 	Test    []byte `struc:"[4]byte"`
+	Nested  Nested
 }
 
-var reference = &Example{nil, 1, 2, 3, 4, 0, "asdfasdf", []byte("1234")}
+var reference = &Example{
+	nil,
+	1,
+	2, 3, 4,
+	0,
+	"asdfasdf",
+	[]byte("1234"),
+	Nested{1},
+}
 
 var referenceBytes = []byte{
 	0, 0, 0, 0, 0, // pad(5)
@@ -27,6 +40,7 @@ var referenceBytes = []byte{
 	0, 0, // int16(0) - big
 	97, 115, 100, 102, 97, 115, 100, 102, // str (length 8)
 	49, 50, 51, 52, // [4]byte
+	0, 0, 0, 1, // Nested{1} (int)
 }
 
 func TestCodec(t *testing.T) {

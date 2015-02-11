@@ -18,6 +18,8 @@ const (
 	Float32
 	Float64
 	String
+	Struct
+	Ptr
 )
 
 var typeLookup = map[string]int{
@@ -49,6 +51,9 @@ var typeNames = map[int]string{
 	Uint64:  "uint64",
 	Float32: "float32",
 	Float64: "float64",
+	String:  "string",
+	Struct:  "struct",
+	Ptr:     "ptr",
 }
 
 var reflectTypeMap = map[reflect.Kind]int{
@@ -66,6 +71,8 @@ var reflectTypeMap = map[reflect.Kind]int{
 	reflect.Float32: Float32,
 	reflect.Float64: Float64,
 	reflect.String:  String,
+	reflect.Struct:  Struct,
+	reflect.Ptr:     Ptr,
 }
 
 // byte order

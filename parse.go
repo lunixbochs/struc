@@ -64,8 +64,9 @@ func parseField(f reflect.StructField) (fd *Field, err error) {
 		fd.Slice = true
 		fd.Len = -1
 		fd.kind = f.Type.Elem().Kind()
-	case reflect.Struct:
-		panic("struc: struct nesting is not yet supported")
+	case reflect.Ptr:
+		fd.Ptr = true
+		fd.kind = f.Type.Elem().Kind()
 	}
 	// find a type in the struct tag
 	pureType := typeLenRe.ReplaceAllLiteralString(tag.Type, "")
