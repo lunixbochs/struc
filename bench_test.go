@@ -36,7 +36,7 @@ var benchStrucRef = &BenchStrucExample{
 	[5]byte{1, 2, 3, 4, 5},
 	1, 2, 3, 4,
 	[4]byte{1, 2, 3, 4},
-	0, eightBytes,
+	8, eightBytes,
 }
 
 func BenchmarkEncode(b *testing.B) {
@@ -85,7 +85,7 @@ func BenchmarkManualEncode(b *testing.B) {
 }
 
 func BenchmarkDecode(b *testing.B) {
-	var out BenchExample
+	var out BenchStrucExample
 	var buf bytes.Buffer
 	Pack(&buf, benchStrucRef)
 	bufBytes := buf.Bytes()
@@ -95,6 +95,7 @@ func BenchmarkDecode(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+		out.Data = nil
 	}
 }
 
