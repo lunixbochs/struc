@@ -4,8 +4,10 @@ import (
 	"reflect"
 )
 
+type Type int
+
 const (
-	Pad = iota
+	Pad Type = iota
 	Bool
 	Int8
 	Uint8
@@ -22,7 +24,26 @@ const (
 	Ptr
 )
 
-var typeLookup = map[string]int{
+func (t Type) String() string {
+	return typeNames[t]
+}
+
+func (t Type) Size() int {
+	switch t {
+	case Pad, String, Int8, Uint8, Bool:
+		return 1
+	case Int16, Uint16:
+		return 2
+	case Int32, Uint32, Float32:
+		return 4
+	case Int64, Uint64, Float64:
+		return 8
+	default:
+		panic("Cannot resolve size of type:" + t.String())
+	}
+}
+
+var typeLookup = map[string]Type{
 	"pad":     Pad,
 	"bool":    Bool,
 	"byte":    Uint8,
@@ -38,7 +59,7 @@ var typeLookup = map[string]int{
 	"float64": Float64,
 }
 
-var typeNames = map[int]string{
+var typeNames = map[Type]string{
 	Pad:     "pad",
 	Bool:    "bool",
 	Int8:    "int8",
@@ -56,7 +77,7 @@ var typeNames = map[int]string{
 	Ptr:     "ptr",
 }
 
-var reflectTypeMap = map[reflect.Kind]int{
+var reflectTypeMap = map[reflect.Kind]Type{
 	reflect.Bool:    Bool,
 	reflect.Int8:    Int8,
 	reflect.Int16:   Int16,
@@ -73,28 +94,4 @@ var reflectTypeMap = map[reflect.Kind]int{
 	reflect.String:  String,
 	reflect.Struct:  Struct,
 	reflect.Ptr:     Ptr,
-}
-
-// byte order
-const (
-	Native = iota
-	Big
-	Little
-)
-
-func (f *Field) Size() int {
-	size := 0
-	switch f.Type {
-	case Pad, Int8, Uint8, Bool:
-		size = 1
-	case Int16, Uint16:
-		size = 2
-	case Int32, Uint32, Float32:
-		size = 4
-	case Int64, Uint64, Float64:
-		size = 8
-	case String:
-		size = 1 * f.Len
-	}
-	return size
 }

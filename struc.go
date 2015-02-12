@@ -28,11 +28,7 @@ func prep(data interface{}) (reflect.Value, Fields, error) {
 }
 
 func Pack(w io.Writer, data interface{}) error {
-	val, fields, err := prep(data)
-	if err != nil {
-		return err
-	}
-	return fields.Pack(w, val)
+	return PackWithOrder(w, data, nil)
 }
 
 // TODO: this is destructive with caching
@@ -41,16 +37,20 @@ func PackWithOrder(w io.Writer, data interface{}, order binary.ByteOrder) error 
 	if err != nil {
 		return err
 	}
-	fields.SetByteOrder(order)
-	return fields.Pack(w, val)
+	if order != nil {
+		fields.SetByteOrder(order)
+	}
+	size := fields.Sizeof(val)
+	buf := make([]byte, size)
+	if err := fields.Pack(buf, val); err != nil {
+		return err
+	}
+	_, err = w.Write(buf)
+	return err
 }
 
 func Unpack(r io.Reader, data interface{}) error {
-	val, fields, err := prep(data)
-	if err != nil {
-		return err
-	}
-	return fields.Unpack(r, val)
+	return UnpackWithOrder(r, data, nil)
 }
 
 func UnpackWithOrder(r io.Reader, data interface{}, order binary.ByteOrder) error {
@@ -58,7 +58,9 @@ func UnpackWithOrder(r io.Reader, data interface{}, order binary.ByteOrder) erro
 	if err != nil {
 		return err
 	}
-	fields.SetByteOrder(order)
+	if order != nil {
+		fields.SetByteOrder(order)
+	}
 	return fields.Unpack(r, val)
 }
 

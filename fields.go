@@ -25,42 +25,17 @@ func (f Fields) String() string {
 
 func (f Fields) Sizeof(val reflect.Value) int {
 	size := 0
-	for _, field := range f {
-		switch field.Type {
-		case String:
-			size += val.Field(field.Index).Len()
-		default:
-			size += field.Size()
+	for i, field := range f {
+		v := val.Field(i)
+		if v.CanSet() {
+			size += field.Size(v)
 		}
 	}
 	return size
 }
 
-func (f Fields) Pack(w io.Writer, val reflect.Value) error {
-	for i, field := range f {
-		if !field.CanSet {
-			continue
-		}
-		v := val.Field(i)
-		length := field.Len
-		if field.Slice && field.CanSet && field.Type != Pad {
-			length = v.Len()
-		} else if field.Sizefrom != nil {
-			length = int(val.FieldByIndex(field.Sizefrom).Int())
-		}
-		if field.Sizeof != nil {
-			length := val.FieldByIndex(field.Sizeof).Len()
-			v.SetInt(int64(length))
-		}
-		err := field.Pack(w, v, length)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
+func (f Fields) Pack(buf []byte, val reflect.Value) error {
+	pos := 0
 	for i, field := range f {
 		if !field.CanSet {
 			continue
@@ -70,9 +45,54 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 		if field.Sizefrom != nil {
 			length = int(val.FieldByIndex(field.Sizefrom).Int())
 		}
-		err := field.Unpack(r, v, length)
+		if field.Sizeof != nil {
+			length := val.FieldByIndex(field.Sizeof).Len()
+			v = reflect.ValueOf(length)
+		}
+		err := field.Pack(buf[pos:], v, length)
 		if err != nil {
 			return err
+		}
+		pos += field.Size(v)
+	}
+	return nil
+}
+
+func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
+	var tmp [8]byte
+	var buf []byte
+	for i, field := range f {
+		if !field.CanSet {
+			continue
+		}
+		v := val.Field(i)
+		length := field.Len
+		if field.Sizefrom != nil {
+			length = int(val.FieldByIndex(field.Sizefrom).Int())
+		}
+		if field.Type == Struct {
+			fields, err := parseFields(v)
+			if err != nil {
+				return err
+			}
+			if err := fields.Unpack(r, v); err != nil {
+				return err
+			}
+			continue
+		} else {
+			size := length * field.Type.Size()
+			if size > 8 {
+				buf = tmp[:size]
+			} else {
+				buf = make([]byte, size)
+			}
+			if _, err := io.ReadFull(r, buf); err != nil {
+				return err
+			}
+			err := field.Unpack(buf[:size], v, length)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

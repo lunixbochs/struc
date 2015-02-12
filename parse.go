@@ -48,12 +48,11 @@ func parseField(f reflect.StructField) (fd *Field, err error) {
 	}
 	var ok bool
 	fd = &Field{
-		Name:   f.Name,
-		Len:    1,
-		Order:  tag.Order,
-		Slice:  false,
-		kind:   f.Type.Kind(),
-		offset: f.Offset,
+		Name:  f.Name,
+		Len:   1,
+		Order: tag.Order,
+		Slice: false,
+		kind:  f.Type.Kind(),
 	}
 	switch fd.kind {
 	case reflect.Array:

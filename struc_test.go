@@ -24,7 +24,7 @@ var reference = &Example{
 	nil,
 	1,
 	2, 3, 4,
-	0,
+	8,
 	"asdfasdf",
 	[]byte("1234"),
 	Nested{1},
@@ -36,8 +36,7 @@ var referenceBytes = []byte{
 	0, 2, // int16(2) - big
 	0, 3, // int16(3) - big
 	0, 4, // int16(4) - big
-	8, 0, // int16(8) - little (sizeof str)
-	0, 0, // int16(0) - big
+	8, 0, 0, 0, // int32(8) - sizeof=Str, little
 	97, 115, 100, 102, 97, 115, 100, 102, // str (length 8)
 	49, 50, 51, 52, // [4]byte
 	0, 0, 0, 1, // Nested{1} (int)
@@ -45,13 +44,11 @@ var referenceBytes = []byte{
 
 func TestCodec(t *testing.T) {
 	var buf bytes.Buffer
-	err := Pack(&buf, reference)
-	if err != nil {
+	if err := Pack(&buf, reference); err != nil {
 		t.Fatal(err)
 	}
 	out := &Example{}
-	err = Unpack(&buf, out)
-	if err != nil {
+	if err := Unpack(&buf, out); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(reference, out) {
@@ -61,8 +58,7 @@ func TestCodec(t *testing.T) {
 
 func TestEncode(t *testing.T) {
 	var buf bytes.Buffer
-	err := Pack(&buf, reference)
-	if err != nil {
+	if err := Pack(&buf, reference); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(buf.Bytes(), referenceBytes) {
@@ -73,11 +69,20 @@ func TestEncode(t *testing.T) {
 func TestDecode(t *testing.T) {
 	buf := bytes.NewReader(referenceBytes)
 	out := &Example{}
-	err := Unpack(buf, out)
-	if err != nil {
+	if err := Unpack(buf, out); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(reference, out) {
 		t.Fatal("decode failed")
+	}
+}
+
+func TestSizeof(t *testing.T) {
+	size, err := Sizeof(reference)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if size != len(referenceBytes) {
+		t.Fatal("sizeof failed")
 	}
 }

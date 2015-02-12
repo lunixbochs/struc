@@ -3,7 +3,6 @@ package struc
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"math"
 	"reflect"
 )
@@ -11,18 +10,15 @@ import (
 type Field struct {
 	Name     string
 	CanSet   bool
-	Struct   bool
 	Ptr      bool
 	Index    int
-	Type     int
+	Type     Type
 	Slice    bool
 	Len      int
 	Order    binary.ByteOrder
 	Sizeof   []int
 	Sizefrom []int
-	// our offset in the struct, from reflect.StructField.Offset
-	offset uintptr
-	kind   reflect.Kind
+	kind     reflect.Kind
 }
 
 func (f *Field) String() string {
@@ -44,8 +40,23 @@ func (f *Field) String() string {
 	return "{" + out + "}"
 }
 
-func (f *Field) packVal(w io.Writer, val reflect.Value, length int) error {
-	var buf []byte
+func (f *Field) Size(val reflect.Value) int {
+	if f.Type == Struct {
+		fields, err := parseFields(val)
+		if err == nil {
+			return fields.Sizeof(val)
+		}
+		return 0
+	} else if f.Type == Pad {
+		return f.Len
+	} else if f.Slice || f.kind == reflect.String {
+		return val.Len() * f.Type.Size()
+	} else {
+		return f.Type.Size()
+	}
+}
+
+func (f *Field) packVal(buf []byte, val reflect.Value, length int) error {
 	order := f.Order
 	if f.Ptr {
 		val = val.Elem()
@@ -56,11 +67,9 @@ func (f *Field) packVal(w io.Writer, val reflect.Value, length int) error {
 		if err != nil {
 			return err
 		}
-		return fields.Pack(w, val)
+		return fields.Pack(buf, val)
 	case Bool, Int8, Int16, Int32, Uint8, Uint16, Uint32:
 		var n uint64
-		var tmp [4]byte
-		buf = tmp[:f.Size()]
 		switch f.kind {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
 			n = uint64(val.Int())
@@ -83,8 +92,6 @@ func (f *Field) packVal(w io.Writer, val reflect.Value, length int) error {
 		}
 	case Int64, Uint64:
 		var n uint64
-		var tmp [8]byte
-		buf = tmp[:f.Size()]
 		if f.kind == reflect.Int64 {
 			n = uint64(val.Int())
 		} else {
@@ -92,8 +99,6 @@ func (f *Field) packVal(w io.Writer, val reflect.Value, length int) error {
 		}
 		order.PutUint64(buf, uint64(n))
 	case Float32, Float64:
-		var tmp [8]byte
-		buf = tmp[:f.Size()]
 		n := val.Float()
 		switch f.Type {
 		case Float32:
@@ -104,52 +109,43 @@ func (f *Field) packVal(w io.Writer, val reflect.Value, length int) error {
 	case String:
 		switch f.kind {
 		case reflect.String:
-			buf = []byte(val.String())
+			copy(buf, []byte(val.String()))
 		default:
 			// TODO: handle kind != bytes here
-			buf = val.Bytes()
+			copy(buf, val.Bytes())
 		}
 	}
-	_, err := w.Write(buf)
-	return err
+	return nil
 }
 
-func (f *Field) Pack(w io.Writer, val reflect.Value, length int) error {
+func (f *Field) Pack(buf []byte, val reflect.Value, length int) error {
 	if f.Type == Pad {
-		_, err := w.Write(make([]byte, length))
-		return err
+		for i := 0; i < length; i++ {
+			buf[i] = 0
+		}
+		return nil
 	}
 	if f.Slice {
+		pos := 0
 		for i := 0; i < length; i++ {
-			if err := f.packVal(w, val.Index(i), 1); err != nil {
+			if err := f.packVal(buf[pos:], val.Index(i), 1); err != nil {
 				return err
 			}
+			pos += f.Type.Size()
 		}
 		return nil
 	} else {
-		return f.packVal(w, val, length)
+		return f.packVal(buf, val, length)
 	}
 }
 
-func (f *Field) unpackVal(r io.Reader, val reflect.Value, length int) error {
+func (f *Field) unpackVal(buf []byte, val reflect.Value, length int) error {
 	order := f.Order
 	if f.Ptr {
 		val = val.Elem()
 	}
 	switch f.Type {
-	case Struct:
-		fields, err := parseFields(val)
-		if err != nil {
-			return err
-		}
-		return fields.Unpack(r, val)
 	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64, Float32, Float64:
-		var tmp [8]byte
-		buf := tmp[:f.Size()]
-		_, err := io.ReadFull(r, buf)
-		if err != nil {
-			return err
-		}
 		var n uint64
 		switch f.Type {
 		case Int8, Uint8:
@@ -171,16 +167,13 @@ func (f *Field) unpackVal(r io.Reader, val reflect.Value, length int) error {
 	return nil
 }
 
-func (f *Field) Unpack(r io.Reader, val reflect.Value, length int) error {
+func (f *Field) Unpack(buf []byte, val reflect.Value, length int) error {
 	if f.Type == Pad || f.kind == reflect.String {
-		buf := make([]byte, length)
 		if f.Type == Pad {
-			_, err := r.Read(buf)
-			return err
+			return nil
 		} else {
-			_, err := r.Read(buf)
 			val.SetString(string(buf))
-			return err
+			return nil
 		}
 	} else if f.Slice {
 		target := val
@@ -188,13 +181,16 @@ func (f *Field) Unpack(r io.Reader, val reflect.Value, length int) error {
 			target = reflect.MakeSlice(val.Type(), length, length)
 			val.Set(target)
 		}
+		pos := 0
+		size := f.Type.Size()
 		for i := 0; i < length; i++ {
-			if err := f.unpackVal(r, target.Index(i), 1); err != nil {
+			if err := f.unpackVal(buf[pos:pos+size], target.Index(i), 1); err != nil {
 				return err
 			}
+			pos += size
 		}
 		return nil
 	} else {
-		return f.unpackVal(r, val, length)
+		return f.unpackVal(buf, val, length)
 	}
 }
