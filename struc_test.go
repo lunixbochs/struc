@@ -18,6 +18,7 @@ type Example struct {
 	Str     string
 	Test    []byte `struc:"[4]byte"`
 	Nested  Nested
+	NestedP *Nested
 }
 
 var reference = &Example{
@@ -28,6 +29,7 @@ var reference = &Example{
 	"asdfasdf",
 	[]byte("1234"),
 	Nested{1},
+	&Nested{2},
 }
 
 var referenceBytes = []byte{
@@ -40,6 +42,7 @@ var referenceBytes = []byte{
 	97, 115, 100, 102, 97, 115, 100, 102, // str (length 8)
 	49, 50, 51, 52, // [4]byte
 	0, 0, 0, 1, // Nested{1} (int)
+	0, 0, 0, 2, // *Nested{2} (int)
 }
 
 func TestCodec(t *testing.T) {

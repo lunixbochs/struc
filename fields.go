@@ -24,6 +24,9 @@ func (f Fields) String() string {
 }
 
 func (f Fields) Sizeof(val reflect.Value) int {
+	for val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
 	size := 0
 	for i, field := range f {
 		v := val.Field(i)
@@ -35,6 +38,9 @@ func (f Fields) Sizeof(val reflect.Value) int {
 }
 
 func (f Fields) Pack(buf []byte, val reflect.Value) error {
+	for val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
 	pos := 0
 	for i, field := range f {
 		if !field.CanSet {
@@ -59,6 +65,9 @@ func (f Fields) Pack(buf []byte, val reflect.Value) error {
 }
 
 func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
+	for val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
 	var tmp [8]byte
 	var buf []byte
 	for i, field := range f {
@@ -71,6 +80,9 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 			length = int(val.FieldByIndex(field.Sizefrom).Int())
 		}
 		if field.Type == Struct {
+			if v.Kind() == reflect.Ptr && !v.Elem().IsValid() {
+				v.Set(reflect.New(v.Type().Elem()))
+			}
 			fields, err := parseFields(v)
 			if err != nil {
 				return err

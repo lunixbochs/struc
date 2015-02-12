@@ -95,6 +95,9 @@ func parseField(f reflect.StructField) (fd *Field, err error) {
 var fieldCache = make(map[reflect.Type]Fields)
 
 func parseFields(v reflect.Value) (Fields, error) {
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
 	t := v.Type()
 	if cached, ok := fieldCache[t]; ok {
 		return cached, nil
