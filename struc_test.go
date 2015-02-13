@@ -121,7 +121,7 @@ func TestSizeof(t *testing.T) {
 }
 
 type ExampleEndian struct {
-	T int `struc:"int16"`
+	T int `struc:"int16,big"`
 }
 
 func TestEndianSwap(t *testing.T) {
