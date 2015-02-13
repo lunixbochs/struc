@@ -40,7 +40,13 @@ type Example struct {
 
 	Size int    `struc:"sizeof=Str,little"` // 0a 00 00 00
 	Str  string `struc:"[]byte"`            // "ijklmnopqr"
-	Strb string `struc:"[4]byte"`           // stuv
+	Strb string `struc:"[4]byte"`           // "stuv"
+
+	Size2 int    `struc:"uint8,sizeof=Str2"` // 04
+	Str2  string // "1234"
+
+	Size3 int    `struc:"uint8,sizeof=Bstr"` // 04
+	Bstr  []byte // "5678"
 
 	Nested  Nested  // 00 00 00 01
 	NestedP *Nested // 00 00 00 02
@@ -55,6 +61,8 @@ var reference = &Example{
 	9, 10, 11, 12, 13, 14, 15, 16, true, false, [4]byte{'e', 'f', 'g', 'h'},
 	20, 21,
 	10, "ijklmnopqr", "stuv",
+	4, "1234",
+	4, []byte("5678"),
 	Nested{1}, &Nested{2}, &five,
 }
 
@@ -75,6 +83,8 @@ var referenceBytes = []byte{
 	10, 0, 0, 0, // little-endian int32(10) sizeof=Str
 	'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', // Str
 	's', 't', 'u', 'v', // fake string([4]byte)
+	04, '1', '2', '3', '4', // real string
+	04, '5', '6', '7', '8', // fake []byte(string)
 
 	0, 0, 0, 1, // Nested{1}
 	0, 0, 0, 2, // &Nested{2}
