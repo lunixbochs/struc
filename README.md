@@ -10,7 +10,8 @@ Take a look at an [example comparing `struc` and `encoding/binary`](https://boch
 
 Struc considers usability first. That said, it does cache reflection data and aims to be competitive with `encoding/binary` struct packing in every way, including performance.
 
-Example struct:
+Example struct
+----
 
 ```Go
 type Example struct {
@@ -21,18 +22,21 @@ type Example struct {
 }
 ```
 
-Struct tag format:
+Struct tag format
+----
 
  - ```Var []int `struc:"[]int32,little,sizeof=StringField"` ``` will pack Var as a slice of little-endian int32, and link it as the size of `StringField`.
  - `sizeof=`: Indicates this field is a number used to track the length of a another field. Sizeof fields are automatically updated on `Pack()` based on the current length of the tracked field, and are used to size the target field during `Unpack()`.
  - Bare values will be parsed as type and endianness.
 
-Endian formats:
+Endian formats
+----
 
  - `big` (default)
  - `little`
 
-Recognized types:
+Recognized types
+----
 
  - `pad` - this type ignores field contents and is backed by a `[length]byte` containing nulls
  - `bool`
@@ -50,7 +54,8 @@ Bare slice types (those with no `[size]`) must have a linked `Sizeof` field.
 
 Private fields are ignored when packing and unpacking.
 
-Example code:
+Example code
+----
 
 ```Go
 package main
@@ -85,7 +90,7 @@ func main() {
 ```
 
 Benchmark
-
+----
 
 `BenchmarkEncode` uses struc. `Stdlib` benchmarks use equivalent `encoding/binary` code. `Manual` encodes without any reflection, and should be considered an upper bound on performance (which generated code based on struc definitions should be able to achieve).
 
