@@ -7,13 +7,13 @@ import (
 
 var refVal = reflect.ValueOf(reference)
 
-func FieldsParseTest(t *testing.T) {
+func TestFieldsParse(t *testing.T) {
 	if _, err := parseFields(refVal); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func FieldsStringTest(t *testing.T) {
+func TestFieldsString(t *testing.T) {
 	fields, _ := parseFields(refVal)
 	fields.String()
 }
