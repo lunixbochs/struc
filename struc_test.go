@@ -36,8 +36,8 @@ type Example struct {
 	Byte4 [4]byte // "efgh"
 
 	Size int    `struc:"sizeof=Str,little"` // 0a 00 00 00
-	Str  string // "ijklmnopqr"
-	Strb string `struc:"[4]byte"` // stuv
+	Str  string `struc:"[]byte"`            // "ijklmnopqr"
+	Strb string `struc:"[4]byte"`           // stuv
 
 	Nested  Nested  // 00 00 00 01
 	NestedP *Nested // 00 00 00 02
@@ -136,5 +136,18 @@ func TestEndianSwap(t *testing.T) {
 	}
 	if little.T != 256 {
 		t.Fatal("big -> little conversion failed")
+	}
+}
+
+func TestNilValue(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Pack(&buf, nil); err == nil {
+		t.Fatal("failed throw error for bad struct value")
+	}
+	if err := Unpack(&buf, nil); err == nil {
+		t.Fatal("failed throw error for bad struct value")
+	}
+	if _, err := Sizeof(&buf); err == nil {
+		t.Fatal("failed to throw error for bad struct value")
 	}
 }
