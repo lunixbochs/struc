@@ -24,7 +24,14 @@ func parseStrucTag(tag reflect.StructTag) (*strucTag, error) {
 	t := &strucTag{
 		Order: binary.BigEndian,
 	}
-	for _, s := range strings.Split(tag.Get("struc"), ",") {
+	tagStr := tag.Get("struc")
+	if tagStr == "" {
+		// someone's going to typo this (I already did once)
+		// sorry if you made a module actually using this tag
+		// and you're mad at me now
+		tagStr = tag.Get("struct")
+	}
+	for _, s := range strings.Split(tagStr, ",") {
 		if strings.HasPrefix(s, "sizeof=") {
 			tmp := strings.SplitN(s, "=", 2)
 			t.Sizeof = tmp[1]
