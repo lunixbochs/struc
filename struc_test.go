@@ -32,7 +32,8 @@ type Example struct {
 	U16   uint16  `struc:"little"` // 0e 00
 	U32   uint32  `struc:"little"` // 0f 00 00 00
 	U64   uint64  `struc:"little"` // 10 00 00 00 00 00 00 00
-	Bool  bool    // 00
+	BoolT bool    // 01
+	BoolF bool    // 00
 	Byte4 [4]byte // "efgh"
 
 	Size int    `struc:"sizeof=Str,little"` // 0a 00 00 00
@@ -49,7 +50,7 @@ var five = 5
 var reference = &Example{
 	nil,
 	1, 2, 3, 4, 5, 6, 7, 8, 0, []byte{'a', 'b', 'c', 'd'},
-	9, 10, 11, 12, 13, 14, 15, 16, true, [4]byte{'e', 'f', 'g', 'h'},
+	9, 10, 11, 12, 13, 14, 15, 16, true, false, [4]byte{'e', 'f', 'g', 'h'},
 	10, "ijklmnopqr", "stuv",
 	Nested{1}, &Nested{2}, &five,
 }
@@ -63,7 +64,7 @@ var referenceBytes = []byte{
 
 	9, 0, 10, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 12, // real int8-int64(9-12)
 	13, 14, 0, 15, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, // real little-endian uint8-uint64(13-16)
-	1,                  // real bool(1)
+	1, 0, // real bool(1), bool(0)
 	'e', 'f', 'g', 'h', // real [4]byte
 
 	10, 0, 0, 0, // little-endian int32(10) sizeof=Str
