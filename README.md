@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/lunixbochs/struc.svg?branch=master)](https://travis-ci.org/lunixbochs/struc)
-[![Coverage Status](https://coveralls.io/repos/lunixbochs/struc/badge.svg)](https://coveralls.io/r/lunixbochs/struc)
+[![Coverage Status](https://coveralls.io/repos/lunixbochs/struc/badge.svg?branch=master)](https://coveralls.io/r/lunixbochs/struc?branch=master)
 
 struc
 ====
