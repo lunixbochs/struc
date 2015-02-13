@@ -20,7 +20,7 @@ type strucTag struct {
 	Sizeof string
 }
 
-func parseStrucTag(tag reflect.StructTag) (*strucTag, error) {
+func parseStrucTag(tag reflect.StructTag) *strucTag {
 	t := &strucTag{
 		Order: binary.BigEndian,
 	}
@@ -43,16 +43,13 @@ func parseStrucTag(tag reflect.StructTag) (*strucTag, error) {
 			t.Type = s
 		}
 	}
-	return t, nil
+	return t
 }
 
 var typeLenRe = regexp.MustCompile(`^\[(\d*)\]`)
 
 func parseField(f reflect.StructField) (fd *Field, err error) {
-	tag, err := parseStrucTag(f.Tag)
-	if err != nil {
-		return nil, err
-	}
+	tag := parseStrucTag(f.Tag)
 	var ok bool
 	fd = &Field{
 		Name:  f.Name,
@@ -122,10 +119,7 @@ func parseFields(v reflect.Value) (Fields, error) {
 		}
 		f.CanSet = v.Field(i).CanSet()
 		f.Index = i
-		tag, err := parseStrucTag(field.Tag)
-		if err != nil {
-			return nil, err
-		}
+		tag := parseStrucTag(field.Tag)
 		if tag.Sizeof != "" {
 			target, ok := t.FieldByName(tag.Sizeof)
 			if !ok {
