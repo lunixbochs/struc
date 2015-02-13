@@ -24,17 +24,19 @@ type Example struct {
 	Boolf  int    `struc:"bool"`          // 01
 	Byte4f []byte `struc:"[4]byte"`       // "abcd"
 
-	I8    int8    // 09
-	I16   int16   // 00 0a
-	I32   int32   // 00 00 00 0b
-	I64   int64   // 00 00 00 00 00 00 00 0c
-	U8    uint8   `struc:"little"` // 0d
-	U16   uint16  `struc:"little"` // 0e 00
-	U32   uint32  `struc:"little"` // 0f 00 00 00
-	U64   uint64  `struc:"little"` // 10 00 00 00 00 00 00 00
-	BoolT bool    // 01
-	BoolF bool    // 00
-	Byte4 [4]byte // "efgh"
+	I8     int8    // 09
+	I16    int16   // 00 0a
+	I32    int32   // 00 00 00 0b
+	I64    int64   // 00 00 00 00 00 00 00 0c
+	U8     uint8   `struc:"little"` // 0d
+	U16    uint16  `struc:"little"` // 0e 00
+	U32    uint32  `struc:"little"` // 0f 00 00 00
+	U64    uint64  `struc:"little"` // 10 00 00 00 00 00 00 00
+	BoolT  bool    // 01
+	BoolF  bool    // 00
+	Byte4  [4]byte // "efgh"
+	Float1 float32 // 41 a0 00 00
+	Float2 float64 // 41 35 00 00 00 00 00 00
 
 	Size int    `struc:"sizeof=Str,little"` // 0a 00 00 00
 	Str  string `struc:"[]byte"`            // "ijklmnopqr"
@@ -51,6 +53,7 @@ var reference = &Example{
 	nil,
 	1, 2, 3, 4, 5, 6, 7, 8, 0, []byte{'a', 'b', 'c', 'd'},
 	9, 10, 11, 12, 13, 14, 15, 16, true, false, [4]byte{'e', 'f', 'g', 'h'},
+	20, 21,
 	10, "ijklmnopqr", "stuv",
 	Nested{1}, &Nested{2}, &five,
 }
@@ -66,6 +69,8 @@ var referenceBytes = []byte{
 	13, 14, 0, 15, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, // real little-endian uint8-uint64(13-16)
 	1, 0, // real bool(1), bool(0)
 	'e', 'f', 'g', 'h', // real [4]byte
+	65, 160, 0, 0, // real float32(20)
+	64, 53, 0, 0, 0, 0, 0, 0, // real float64(21)
 
 	10, 0, 0, 0, // little-endian int32(10) sizeof=Str
 	'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', // Str

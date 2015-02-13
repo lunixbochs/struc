@@ -145,7 +145,21 @@ func (f *Field) unpackVal(buf []byte, val reflect.Value, length int) error {
 		val = val.Elem()
 	}
 	switch f.Type {
-	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64, Float32, Float64:
+	case Float32, Float64:
+		var n float64
+		switch f.Type {
+		case Float32:
+			n = float64(math.Float32frombits(order.Uint32(buf)))
+		case Float64:
+			n = math.Float64frombits(order.Uint64(buf))
+		}
+		switch f.kind {
+		case reflect.Float32, reflect.Float64:
+			val.SetFloat(n)
+		default:
+			return fmt.Errorf("struc: refusing to unpack float into field %s of type %s", f.Name, f.kind.String())
+		}
+	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64:
 		var n uint64
 		switch f.Type {
 		case Bool, Int8, Uint8:
