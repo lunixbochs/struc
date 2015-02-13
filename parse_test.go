@@ -1,6 +1,7 @@
 package struc
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 )
@@ -46,5 +47,16 @@ type missingSize struct {
 func TestMissingSize(t *testing.T) {
 	if err := parseTest(&missingSize{}); err == nil {
 		t.Fatal("failed to error on missing field size")
+	}
+}
+
+type badNested struct {
+	Empty empty
+}
+
+func TestNestedParseError(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Pack(&buf, &badNested{}); err == nil {
+		t.Fatal("failed to error on bad nested struct")
 	}
 }
