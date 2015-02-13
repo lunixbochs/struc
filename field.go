@@ -68,10 +68,16 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int) error {
 			return err
 		}
 		return fields.Pack(buf, val)
-	case Bool, Int8, Int16, Int32, Uint8, Uint16, Uint32:
+	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64:
 		var n uint64
 		switch f.kind {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
+		case reflect.Bool:
+			if val.Bool() {
+				n = 1
+			} else {
+				n = 0
+			}
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			n = uint64(val.Int())
 		default:
 			n = val.Uint()
@@ -89,15 +95,9 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int) error {
 			order.PutUint16(buf, uint16(n))
 		case Int32, Uint32:
 			order.PutUint32(buf, uint32(n))
+		case Int64, Uint64:
+			order.PutUint64(buf, uint64(n))
 		}
-	case Int64, Uint64:
-		var n uint64
-		if f.kind == reflect.Int64 {
-			n = uint64(val.Int())
-		} else {
-			n = val.Uint()
-		}
-		order.PutUint64(buf, uint64(n))
 	case Float32, Float64:
 		n := val.Float()
 		switch f.Type {
@@ -148,7 +148,7 @@ func (f *Field) unpackVal(buf []byte, val reflect.Value, length int) error {
 	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64, Float32, Float64:
 		var n uint64
 		switch f.Type {
-		case Int8, Uint8:
+		case Bool, Int8, Uint8:
 			n = uint64(buf[0])
 		case Int16, Uint16:
 			n = uint64(order.Uint16(buf))
@@ -158,6 +158,8 @@ func (f *Field) unpackVal(buf []byte, val reflect.Value, length int) error {
 			n = uint64(order.Uint64(buf))
 		}
 		switch f.kind {
+		case reflect.Bool:
+			val.SetBool(n != 0)
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			val.SetInt(int64(n))
 		default:

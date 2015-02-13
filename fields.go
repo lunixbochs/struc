@@ -79,10 +79,10 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 		if field.Sizefrom != nil {
 			length = int(val.FieldByIndex(field.Sizefrom).Int())
 		}
+		if v.Kind() == reflect.Ptr && !v.Elem().IsValid() {
+			v.Set(reflect.New(v.Type().Elem()))
+		}
 		if field.Type == Struct {
-			if v.Kind() == reflect.Ptr && !v.Elem().IsValid() {
-				v.Set(reflect.New(v.Type().Elem()))
-			}
 			fields, err := parseFields(v)
 			if err != nil {
 				return err
@@ -93,7 +93,7 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 			continue
 		} else {
 			size := length * field.Type.Size()
-			if size > 8 {
+			if size < 8 {
 				buf = tmp[:size]
 			} else {
 				buf = make([]byte, size)
