@@ -2,6 +2,7 @@ package struc
 
 import (
 	"bytes"
+	"encoding/binary"
 	"reflect"
 	"testing"
 )
@@ -116,5 +117,24 @@ func TestSizeof(t *testing.T) {
 	}
 	if size != len(referenceBytes) {
 		t.Fatal("sizeof failed")
+	}
+}
+
+type ExampleEndian struct {
+	T int `struc:"int16"`
+}
+
+func TestEndianSwap(t *testing.T) {
+	var buf bytes.Buffer
+	big := &ExampleEndian{1}
+	if err := PackWithOrder(&buf, big, binary.BigEndian); err != nil {
+		t.Fatal(err)
+	}
+	little := &ExampleEndian{}
+	if err := UnpackWithOrder(&buf, little, binary.LittleEndian); err != nil {
+		t.Fatal(err)
+	}
+	if little.T != 256 {
+		t.Fatal("big -> little conversion failed")
 	}
 }
