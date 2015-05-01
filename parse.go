@@ -61,6 +61,7 @@ func parseField(f reflect.StructField) (fd *Field, err error) {
 	switch fd.kind {
 	case reflect.Array:
 		fd.Slice = true
+		fd.Array = true
 		fd.Len = f.Type.Len()
 		fd.kind = f.Type.Elem().Kind()
 	case reflect.Slice:
@@ -71,6 +72,8 @@ func parseField(f reflect.StructField) (fd *Field, err error) {
 		fd.Ptr = true
 		fd.kind = f.Type.Elem().Kind()
 	}
+	var defTypeOk bool
+	fd.defType, defTypeOk = reflectTypeMap[fd.kind]
 	// find a type in the struct tag
 	pureType := typeLenRe.ReplaceAllLiteralString(tag.Type, "")
 	if fd.Type, ok = typeLookup[pureType]; ok {
@@ -88,8 +91,9 @@ func parseField(f reflect.StructField) (fd *Field, err error) {
 		}
 		return
 	}
-	// the user didn't specify a type, or used an unknown type
-	if fd.Type, ok = reflectTypeMap[fd.kind]; ok {
+	// the user didn't specify a type
+	if defTypeOk {
+		fd.Type = fd.defType
 		return
 	}
 	err = errors.New("struc: Could not find field type.")
