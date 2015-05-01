@@ -41,11 +41,21 @@ func PackWithOrder(w io.Writer, data interface{}, order binary.ByteOrder) error 
 		fields.SetByteOrder(order)
 	}
 	size := fields.Sizeof(val)
-	buf := make([]byte, size)
+	var orgbuf []byte
+	var buf []byte
+	if size <= 65536 {
+		orgbuf = bufferPool.Get().([]byte)
+		buf = orgbuf[:size]
+	} else {
+		buf = make([]byte, size)
+	}
 	if err := fields.Pack(buf, val); err != nil {
 		return err
 	}
 	_, err = w.Write(buf)
+	if size <= 65536 {
+		bufferPool.Put(orgbuf)
+	}
 	return err
 }
 

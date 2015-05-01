@@ -3,6 +3,7 @@ package struc
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -121,6 +122,8 @@ func TestDecode(t *testing.T) {
 	if err := Unpack(buf, out); err != nil {
 		t.Fatal(err)
 	}
+	fmt.Println(out)
+	fmt.Println(reference)
 	if !reflect.DeepEqual(reference, out) {
 		t.Fatal("decode failed")
 	}
