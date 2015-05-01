@@ -118,7 +118,34 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int) error {
 	return nil
 }
 
-func (f *Field) Pack(buf []byte, val reflect.Value, length int) error {
+func (f *Field) safePack(buf []byte, val reflect.Value, length int) error {
+	if f.Type == Pad {
+		for i := 0; i < length; i++ {
+			buf[i] = 0
+		}
+		return nil
+	}
+	if f.Slice {
+		pos := 0
+		for i := 0; i < length; i++ {
+			if err := f.packVal(buf[pos:], val.Index(i), 1); err != nil {
+				return err
+			}
+			pos += f.Type.Size()
+		}
+		return nil
+	} else {
+		return f.packVal(buf, val, length)
+	}
+}
+
+func (f *Field) Pack(buf []byte, val reflect.Value, length int) (err error) {
+	defer func() {
+		if q := recover(); q != nil {
+			err = f.safePack(buf, val, length)
+		}
+	}()
+
 	if f.Type == Pad {
 		for i := 0; i < length; i++ {
 			buf[i] = 0
@@ -188,7 +215,41 @@ func (f *Field) unpackVal(buf []byte, val reflect.Value, length int) error {
 	return nil
 }
 
-func (f *Field) Unpack(buf []byte, val reflect.Value, length int) error {
+func (f *Field) safeUnpack(buf []byte, val reflect.Value, length int) error {
+	if f.Type == Pad || f.kind == reflect.String {
+		if f.Type == Pad {
+			return nil
+		} else {
+			val.SetString(string(buf))
+			return nil
+		}
+	} else if f.Slice {
+		target := val
+		if val.Cap() < length {
+			target = reflect.MakeSlice(val.Type(), length, length)
+			val.Set(target)
+		}
+		pos := 0
+		size := f.Type.Size()
+		for i := 0; i < length; i++ {
+			if err := f.unpackVal(buf[pos:pos+size], target.Index(i), 1); err != nil {
+				return err
+			}
+			pos += size
+		}
+		return nil
+	} else {
+		return f.unpackVal(buf, val, length)
+	}
+}
+
+func (f *Field) Unpack(buf []byte, val reflect.Value, length int) (err error) {
+	defer func() {
+		if q := recover(); q != nil {
+			err = f.safeUnpack(buf, val, length)
+		}
+	}()
+	val.Bytes()
 	if f.Type == Pad || f.kind == reflect.String {
 		if f.Type == Pad {
 			return nil
@@ -204,7 +265,13 @@ func (f *Field) Unpack(buf []byte, val reflect.Value, length int) error {
 		}
 		// special case byte slices for performance
 		if f.Type == Uint8 {
-			val.SetBytes(buf[:length])
+			newbuf := make([]byte, length)
+			copy(newbuf, buf[:length])
+			val.SetBytes(newbuf)
+			// clobber buf for debugging
+			for i := 0; i < length; i++ {
+				buf[i] = 0xff
+			}
 			return nil
 		}
 		pos := 0
