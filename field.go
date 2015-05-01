@@ -126,6 +126,11 @@ func (f *Field) Pack(buf []byte, val reflect.Value, length int) error {
 		return nil
 	}
 	if f.Slice {
+		// special case byte slices for performance
+		if f.Type == Uint8 {
+			copy(buf, val.Bytes()[:length])
+			return nil
+		}
 		pos := 0
 		for i := 0; i < length; i++ {
 			if err := f.packVal(buf[pos:], val.Index(i), 1); err != nil {
@@ -196,6 +201,11 @@ func (f *Field) Unpack(buf []byte, val reflect.Value, length int) error {
 		if val.Cap() < length {
 			target = reflect.MakeSlice(val.Type(), length, length)
 			val.Set(target)
+		}
+		// special case byte slices for performance
+		if f.Type == Uint8 {
+			val.SetBytes(buf[:length])
+			return nil
 		}
 		pos := 0
 		size := f.Type.Size()
