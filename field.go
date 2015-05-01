@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"sync"
 )
 
 type Field struct {
@@ -20,6 +21,8 @@ type Field struct {
 	Sizefrom []int
 	kind     reflect.Kind
 }
+
+var bufferPool sync.Pool
 
 func (f *Field) String() string {
 	var out string
@@ -267,11 +270,7 @@ func (f *Field) Unpack(buf []byte, val reflect.Value, length int) (err error) {
 		if f.Type == Uint8 {
 			newbuf := make([]byte, length)
 			copy(newbuf, buf[:length])
-			val.SetBytes(newbuf)
-			// clobber buf for debugging
-			for i := 0; i < length; i++ {
-				buf[i] = 0xff
-			}
+			val.SetBytes(newbuf[:length])
 			return nil
 		}
 		pos := 0
@@ -285,5 +284,11 @@ func (f *Field) Unpack(buf []byte, val reflect.Value, length int) (err error) {
 		return nil
 	} else {
 		return f.unpackVal(buf, val, length)
+	}
+}
+
+func init() {
+	bufferPool.New = func() interface{} {
+		return make([]byte, 65536)
 	}
 }
