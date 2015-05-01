@@ -16,3 +16,19 @@ func TestBadFloatField(t *testing.T) {
 		t.Fatal("failed to error on bad float unpack")
 	}
 }
+
+type emptyLengthField struct {
+	Strlen int `struc:"sizeof=Str"`
+	Str    []byte
+}
+
+func TestEmptyLengthField(t *testing.T) {
+	var buf bytes.Buffer
+	s := &emptyLengthField{0, []byte("test")}
+	o := &emptyLengthField{}
+	Pack(&buf, s)
+	Unpack(&buf, o)
+	if !bytes.Equal(s.Str, o.Str) {
+		t.Fatal("empty length field encode failed")
+	}
+}

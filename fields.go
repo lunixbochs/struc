@@ -51,6 +51,9 @@ func (f Fields) Pack(buf []byte, val reflect.Value) error {
 		if field.Sizefrom != nil {
 			length = int(val.FieldByIndex(field.Sizefrom).Int())
 		}
+		if length <= 0 && field.Slice {
+			length = field.Size(v)
+		}
 		if field.Sizeof != nil {
 			length := val.FieldByIndex(field.Sizeof).Len()
 			v = reflect.ValueOf(length)
