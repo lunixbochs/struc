@@ -52,7 +52,11 @@ func (f *Field) Size(val reflect.Value) int {
 	} else if f.Type == Pad {
 		return f.Len
 	} else if f.Slice || f.kind == reflect.String {
-		return val.Len() * f.Type.Size()
+		length := val.Len()
+		if f.Len > 1 {
+			length = f.Len
+		}
+		return length * f.Type.Size()
 	} else {
 		return f.Type.Size()
 	}

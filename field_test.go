@@ -32,3 +32,21 @@ func TestEmptyLengthField(t *testing.T) {
 		t.Fatal("empty length field encode failed")
 	}
 }
+
+type fixedSlicePad struct {
+	Field []byte `struc:"[4]byte"`
+}
+
+func TestFixedSlicePad(t *testing.T) {
+	var buf bytes.Buffer
+	ref := []byte{0, 0, 0, 0}
+	s := &fixedSlicePad{}
+	Pack(&buf, s)
+	if !bytes.Equal(buf.Bytes(), ref) {
+		t.Fatal("implicit fixed slice pack failed")
+	}
+	Unpack(&buf, s)
+	if !bytes.Equal(s.Field, ref) {
+		t.Fatal("implicit fixed slice unpack failed")
+	}
+}
