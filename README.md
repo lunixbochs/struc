@@ -94,10 +94,10 @@ Benchmark
 `BenchmarkEncode` uses struc. `Stdlib` benchmarks use equivalent `encoding/binary` code. `Manual` encodes without any reflection, and should be considered an upper bound on performance (which generated code based on struc definitions should be able to achieve).
 
 ```
-BenchmarkEncode        1000000   1438 ns/op
-BenchmarkStdlibEncode  1000000   1868 ns/op
-BenchmarkManualEncode  5000000    293 ns/op
-BenchmarkDecode        1000000   1444 ns/op
-BenchmarkStdlibDecode  1000000   1756 ns/op
-BenchmarkManualDecode  20000000  90.5 ns/op
+BenchmarkEncode        1000000   1265 ns/op
+BenchmarkStdlibEncode  1000000   1855 ns/op
+BenchmarkManualEncode  5000000    284 ns/op
+BenchmarkDecode        1000000   1259 ns/op
+BenchmarkStdlibDecode  1000000   1656 ns/op
+BenchmarkManualDecode  20000000  89.0 ns/op
 ```
