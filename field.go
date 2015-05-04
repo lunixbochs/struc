@@ -203,10 +203,8 @@ func (f *Field) Unpack(buf []byte, val reflect.Value, length int) error {
 			return nil
 		}
 	} else if f.Slice {
-		target := val
 		if val.Cap() < length {
-			target = reflect.MakeSlice(val.Type(), length, length)
-			val.Set(target)
+			val.Set(reflect.MakeSlice(val.Type(), length, length))
 		} else if val.Len() < length {
 			val.Set(val.Slice(0, length))
 		}
@@ -218,7 +216,7 @@ func (f *Field) Unpack(buf []byte, val reflect.Value, length int) error {
 		pos := 0
 		size := f.Type.Size()
 		for i := 0; i < length; i++ {
-			if err := f.unpackVal(buf[pos:pos+size], target.Index(i), 1); err != nil {
+			if err := f.unpackVal(buf[pos:pos+size], val.Index(i), 1); err != nil {
 				return err
 			}
 			pos += size
