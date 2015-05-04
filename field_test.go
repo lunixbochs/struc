@@ -26,8 +26,12 @@ func TestEmptyLengthField(t *testing.T) {
 	var buf bytes.Buffer
 	s := &emptyLengthField{0, []byte("test")}
 	o := &emptyLengthField{}
-	Pack(&buf, s)
-	Unpack(&buf, o)
+	if err := Pack(&buf, s); err != nil {
+		t.Fatal(err)
+	}
+	if err := Unpack(&buf, o); err != nil {
+		t.Fatal(err)
+	}
 	if !bytes.Equal(s.Str, o.Str) {
 		t.Fatal("empty length field encode failed")
 	}
@@ -41,11 +45,15 @@ func TestFixedSlicePad(t *testing.T) {
 	var buf bytes.Buffer
 	ref := []byte{0, 0, 0, 0}
 	s := &fixedSlicePad{}
-	Pack(&buf, s)
+	if err := Pack(&buf, s); err != nil {
+		t.Fatal(err)
+	}
 	if !bytes.Equal(buf.Bytes(), ref) {
 		t.Fatal("implicit fixed slice pack failed")
 	}
-	Unpack(&buf, s)
+	if err := Unpack(&buf, s); err != nil {
+		t.Fatal(err)
+	}
 	if !bytes.Equal(s.Field, ref) {
 		t.Fatal("implicit fixed slice unpack failed")
 	}

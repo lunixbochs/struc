@@ -87,7 +87,9 @@ func BenchmarkManualEncode(b *testing.B) {
 func BenchmarkDecode(b *testing.B) {
 	var out BenchStrucExample
 	var buf bytes.Buffer
-	Pack(&buf, benchStrucRef)
+	if err := Pack(&buf, benchStrucRef); err != nil {
+		b.Fatal(err)
+	}
 	bufBytes := buf.Bytes()
 	for i := 0; i < b.N; i++ {
 		buf := bytes.NewReader(bufBytes)
@@ -125,7 +127,9 @@ func BenchmarkStdlibDecode(b *testing.B) {
 func BenchmarkManualDecode(b *testing.B) {
 	var o BenchStrucExample
 	var buf bytes.Buffer
-	Pack(&buf, benchStrucRef)
+	if err := Pack(&buf, benchStrucRef); err != nil {
+		b.Fatal(err)
+	}
 	tmp := buf.Bytes()
 	order := binary.BigEndian
 	for i := 0; i < b.N; i++ {
