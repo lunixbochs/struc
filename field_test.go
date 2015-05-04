@@ -50,3 +50,20 @@ func TestFixedSlicePad(t *testing.T) {
 		t.Fatal("implicit fixed slice unpack failed")
 	}
 }
+
+type sliceCap struct {
+	Len   int `struc:"sizeof=Field"`
+	Field []byte
+}
+
+func TestSliceCap(t *testing.T) {
+	var buf bytes.Buffer
+	tmp := &sliceCap{0, []byte("1234")}
+	if err := Pack(&buf, tmp); err != nil {
+		t.Fatal(err)
+	}
+	tmp.Field = make([]byte, 0, 4)
+	if err := Unpack(&buf, tmp); err != nil {
+		t.Fatal(err)
+	}
+}

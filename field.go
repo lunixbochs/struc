@@ -207,6 +207,8 @@ func (f *Field) Unpack(buf []byte, val reflect.Value, length int) error {
 		if val.Cap() < length {
 			target = reflect.MakeSlice(val.Type(), length, length)
 			val.Set(target)
+		} else if val.Len() < length {
+			val.Set(val.Slice(0, length))
 		}
 		// special case byte slices for performance
 		if !f.Array && f.Type == Uint8 && f.defType == Uint8 {
