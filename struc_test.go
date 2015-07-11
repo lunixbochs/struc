@@ -163,7 +163,7 @@ func TestNilValue(t *testing.T) {
 	if err := Unpack(&buf, nil); err == nil {
 		t.Fatal("failed throw error for bad struct value")
 	}
-	if _, err := Sizeof(&buf); err == nil {
+	if _, err := Sizeof(nil); err == nil {
 		t.Fatal("failed to throw error for bad struct value")
 	}
 }
