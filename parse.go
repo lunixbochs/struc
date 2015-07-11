@@ -122,6 +122,9 @@ func parseFields(v reflect.Value) (Fields, error) {
 			return nil, err
 		}
 		f.CanSet = v.Field(i).CanSet()
+		if !f.CanSet {
+			continue
+		}
 		f.Index = i
 		tag := parseStrucTag(field.Tag)
 		if tag.Sizeof != "" {
