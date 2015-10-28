@@ -9,7 +9,7 @@ import (
 
 func value(data interface{}) (reflect.Value, error) {
 	v := reflect.ValueOf(data)
-	if v.Kind() == reflect.Ptr {
+	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
 		if v.Kind() == reflect.Struct {
 			return v, nil
