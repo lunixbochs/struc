@@ -65,28 +65,36 @@ func TestPackable(t *testing.T) {
 		t.Fatal("Packable Pack() did not match reference.")
 	}
 	// unpack tests
-	if err := Unpack(&buf, i8); err != nil {
+	i8 = 0
+	i16 = 0
+	i32 = 0
+	i64 = 0
+	u8 = 0
+	u16 = 0
+	u32 = 0
+	u64 = 0
+	if err := Unpack(&buf, &i8); err != nil {
 		t.Fatal(err)
 	}
-	if err := Unpack(&buf, i16); err != nil {
+	if err := Unpack(&buf, &i16); err != nil {
 		t.Fatal(err)
 	}
-	if err := Unpack(&buf, i32); err != nil {
+	if err := Unpack(&buf, &i32); err != nil {
 		t.Fatal(err)
 	}
-	if err := Unpack(&buf, i64); err != nil {
+	if err := Unpack(&buf, &i64); err != nil {
 		t.Fatal(err)
 	}
-	if err := Unpack(&buf, u8); err != nil {
+	if err := Unpack(&buf, &u8); err != nil {
 		t.Fatal(err)
 	}
-	if err := Unpack(&buf, u16); err != nil {
+	if err := Unpack(&buf, &u16); err != nil {
 		t.Fatal(err)
 	}
-	if err := Unpack(&buf, u32); err != nil {
+	if err := Unpack(&buf, &u32); err != nil {
 		t.Fatal(err)
 	}
-	if err := Unpack(&buf, u64); err != nil {
+	if err := Unpack(&buf, &u64); err != nil {
 		t.Fatal(err)
 	}
 	if err := Unpack(&buf, u8a[:]); err != nil {
@@ -103,12 +111,12 @@ func TestPackable(t *testing.T) {
 		t.Fatal("Unsigned integer unpack failed.")
 	}
 	for i := 0; i < 8; i++ {
-		if u8a[i] != uint8(i + 9) {
+		if u8a[i] != uint8(i+9) {
 			t.Fatal("uint8 array unpack failed.")
 		}
 	}
 	for i := 0; i < 8; i++ {
-		if u16a[i] != uint16(i + 17) {
+		if u16a[i] != uint16(i+17) {
 			t.Fatal("uint16 array unpack failed.")
 		}
 	}

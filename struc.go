@@ -10,7 +10,12 @@ import (
 func prep(data interface{}) (reflect.Value, Packable, error) {
 	value := reflect.ValueOf(data)
 	for value.Kind() == reflect.Ptr {
-		value = value.Elem()
+		next := value.Elem().Kind()
+		if next == reflect.Struct || next == reflect.Ptr {
+			value = value.Elem()
+		} else {
+			break
+		}
 	}
 	switch value.Kind() {
 	case reflect.Struct:
