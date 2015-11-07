@@ -42,6 +42,9 @@ func PackWithOrder(w io.Writer, data interface{}, order binary.ByteOrder) error 
 	if order != nil {
 		fields.SetByteOrder(order)
 	}
+	if val.Type().Kind() == reflect.String {
+		val = val.Convert(reflect.TypeOf([]byte{}))
+	}
 	size := fields.Sizeof(val)
 	buf := make([]byte, size)
 	if err := fields.Pack(buf, val); err != nil {
