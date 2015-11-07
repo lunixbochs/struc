@@ -7,24 +7,21 @@ import (
 	"reflect"
 )
 
-func value(data interface{}) (reflect.Value, error) {
-	v := reflect.ValueOf(data)
-	for v.Kind() == reflect.Ptr {
-		v = v.Elem()
-		if v.Kind() == reflect.Struct {
-			return v, nil
+func prep(data interface{}) (reflect.Value, Packable, error) {
+	value := reflect.ValueOf(data)
+	for value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+	switch value.Kind() {
+	case reflect.Struct:
+		fields, err := parseFields(value)
+		return value, fields, err
+	default:
+		if !value.IsValid() {
+			return reflect.Value{}, nil, fmt.Errorf("Invalid reflect.Value for %+v", data)
 		}
+		return value, &binaryFallback{value, binary.BigEndian}, nil
 	}
-	return reflect.Value{}, fmt.Errorf("struc: got %s, expected pointer to struct", v.Kind().String())
-}
-
-func prep(data interface{}) (reflect.Value, Fields, error) {
-	val, err := value(data)
-	if err != nil {
-		return reflect.Value{}, nil, err
-	}
-	fields, err := parseFields(val)
-	return val, fields, err
 }
 
 func Pack(w io.Writer, data interface{}) error {
