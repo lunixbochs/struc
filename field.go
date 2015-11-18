@@ -44,9 +44,18 @@ func (f *Field) String() string {
 
 func (f *Field) Size(val reflect.Value) int {
 	if f.Type == Struct {
-		fields, err := parseFields(val)
-		if err == nil {
-			return fields.Sizeof(val)
+		vals := []reflect.Value{val}
+		if f.Slice {
+			vals = make([]reflect.Value, val.Len())
+			for i := 0; i < val.Len(); i++ {
+				vals[i] = val.Index(i)
+			}
+		}
+		for _, val := range vals {
+			fields, err := parseFields(val)
+			if err == nil {
+				return fields.Sizeof(val)
+			}
 		}
 		return 0
 	} else if f.Type == Pad {
@@ -139,10 +148,19 @@ func (f *Field) Pack(buf []byte, val reflect.Value, length int) error {
 		}
 		pos := 0
 		for i := 0; i < length; i++ {
-			if err := f.packVal(buf[pos:], val.Index(i), 1); err != nil {
+			cur := val.Index(i)
+			if err := f.packVal(buf[pos:], cur, 1); err != nil {
 				return err
 			}
-			pos += f.Type.Size()
+			// TODO: make packVal() return the length?
+			if f.Type == Struct {
+				fields, err := parseFields(cur)
+				if err == nil {
+					pos += fields.Sizeof(cur)
+				}
+			} else {
+				pos += f.Type.Size()
+			}
 		}
 		return nil
 	} else {

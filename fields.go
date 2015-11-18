@@ -52,7 +52,7 @@ func (f Fields) Pack(buf []byte, val reflect.Value) error {
 			length = int(val.FieldByIndex(field.Sizefrom).Int())
 		}
 		if length <= 0 && field.Slice {
-			length = field.Size(v)
+			length = v.Len()
 		}
 		if field.Sizeof != nil {
 			length := val.FieldByIndex(field.Sizeof).Len()
@@ -86,12 +86,21 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 			v.Set(reflect.New(v.Type().Elem()))
 		}
 		if field.Type == Struct {
-			fields, err := parseFields(v)
-			if err != nil {
-				return err
+			vals := []reflect.Value{v}
+			if field.Slice {
+				vals = make([]reflect.Value, v.Len())
+				for i := 0; i < v.Len(); i++ {
+					vals[i] = v.Index(i)
+				}
 			}
-			if err := fields.Unpack(r, v); err != nil {
-				return err
+			for _, v := range vals {
+				fields, err := parseFields(v)
+				if err != nil {
+					return err
+				}
+				if err := fields.Unpack(r, v); err != nil {
+					return err
+				}
 			}
 			continue
 		} else {
