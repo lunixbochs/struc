@@ -139,7 +139,7 @@ func parseFields(v reflect.Value) (Fields, error) {
 			f.Sizefrom = sizefrom
 		}
 		if f.Len == -1 && f.Sizefrom == nil {
-			return nil, fmt.Errorf("struc: field `%s` is a slice with no length or Sizeof field", field.Name)
+			return nil, fmt.Errorf("struc: field `%s` is a slice with no length or sizeof field", field.Name)
 		}
 		fields = append(fields, f)
 	}

@@ -51,6 +51,9 @@ type Example struct {
 	Nested  Nested  // 00 00 00 01
 	NestedP *Nested // 00 00 00 02
 	TestP64 *int    `struc:"int64"` // 00 00 00 05
+
+	NestedSize int      `struc:"sizeof=NestedA"` // 00 00 00 02
+	NestedA    []Nested // [00 00 00 03, 00 00 00 04]
 }
 
 var five = 5
@@ -64,6 +67,7 @@ var reference = &Example{
 	4, "1234",
 	4, []byte("5678"),
 	Nested{1}, &Nested{2}, &five,
+	2, []Nested{{3}, {4}},
 }
 
 var referenceBytes = []byte{
@@ -89,6 +93,9 @@ var referenceBytes = []byte{
 	0, 0, 0, 1, // Nested{1}
 	0, 0, 0, 2, // &Nested{2}
 	0, 0, 0, 0, 0, 0, 0, 5, // &five
+
+	0, 0, 0, 2, // int32(2)
+	0, 0, 0, 3, 0, 0, 0, 4, // [Nested{3}, Nested{4}]
 }
 
 func TestCodec(t *testing.T) {
