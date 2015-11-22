@@ -37,7 +37,7 @@ func (f Fields) Sizeof(val reflect.Value) int {
 	return size
 }
 
-func (f Fields) Pack(buf []byte, val reflect.Value) error {
+func (f Fields) Pack(buf []byte, val reflect.Value) (int, error) {
 	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	}
@@ -58,13 +58,13 @@ func (f Fields) Pack(buf []byte, val reflect.Value) error {
 			length := val.FieldByIndex(field.Sizeof).Len()
 			v = reflect.ValueOf(length)
 		}
-		err := field.Pack(buf[pos:], v, length)
-		if err != nil {
-			return err
+		if n, err := field.Pack(buf[pos:], v, length); err != nil {
+			return n, err
+		} else {
+			pos += n
 		}
-		pos += field.Size(v)
 	}
-	return nil
+	return pos, nil
 }
 
 func (f Fields) Unpack(r io.Reader, val reflect.Value) error {

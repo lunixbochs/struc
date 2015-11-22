@@ -27,7 +27,7 @@ type Packable interface {
 	SetByteOrder(order binary.ByteOrder)
 	String() string
 	Sizeof(val reflect.Value) int
-	Pack(buf []byte, val reflect.Value) error
+	Pack(buf []byte, val reflect.Value) (int, error)
 	Unpack(r io.Reader, val reflect.Value) error
 }
 
@@ -48,9 +48,10 @@ func (b *binaryFallback) Sizeof(val reflect.Value) int {
 	return binary.Size(val.Interface())
 }
 
-func (b *binaryFallback) Pack(buf []byte, val reflect.Value) error {
+func (b *binaryFallback) Pack(buf []byte, val reflect.Value) (int, error) {
 	tmp := byteWriter{buf: buf}
-	return binary.Write(tmp, b.order, val.Interface())
+	err := binary.Write(tmp, b.order, val.Interface())
+	return tmp.pos, err
 }
 
 func (b *binaryFallback) Unpack(r io.Reader, val reflect.Value) error {

@@ -70,7 +70,7 @@ func (f *Field) Size(val reflect.Value) int {
 	}
 }
 
-func (f *Field) packVal(buf []byte, val reflect.Value, length int) error {
+func (f *Field) packVal(buf []byte, val reflect.Value, length int) (size int, err error) {
 	order := f.Order
 	if f.Ptr {
 		val = val.Elem()
@@ -79,6 +79,7 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int) error {
 	case Struct:
 		return f.Fields.Pack(buf, val)
 	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64:
+		size = f.Type.Size()
 		var n uint64
 		switch f.kind {
 		case reflect.Bool:
@@ -109,6 +110,7 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int) error {
 			order.PutUint64(buf, uint64(n))
 		}
 	case Float32, Float64:
+		size = f.Type.Size()
 		n := val.Float()
 		switch f.Type {
 		case Float32:
@@ -119,42 +121,40 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int) error {
 	case String:
 		switch f.kind {
 		case reflect.String:
+			size = val.Len()
 			copy(buf, []byte(val.String()))
 		default:
 			// TODO: handle kind != bytes here
+			size = val.Len()
 			copy(buf, val.Bytes())
 		}
 	}
-	return nil
+	return
 }
 
-func (f *Field) Pack(buf []byte, val reflect.Value, length int) error {
+func (f *Field) Pack(buf []byte, val reflect.Value, length int) (int, error) {
 	if f.Type == Pad {
 		for i := 0; i < length; i++ {
 			buf[i] = 0
 		}
-		return nil
+		return length, nil
 	}
 	if f.Slice {
 		// special case byte slices for performance
 		if !f.Array && f.Type == Uint8 && f.defType == Uint8 {
 			copy(buf, val.Bytes())
-			return nil
+			return val.Len(), nil
 		}
 		pos := 0
 		for i := 0; i < length; i++ {
 			cur := val.Index(i)
-			if err := f.packVal(buf[pos:], cur, 1); err != nil {
-				return err
-			}
-			// TODO: make packVal() return the length?
-			if f.Type == Struct {
-				pos += f.Fields.Sizeof(cur)
+			if n, err := f.packVal(buf[pos:], cur, 1); err != nil {
+				return pos, err
 			} else {
-				pos += f.Type.Size()
+				pos += n
 			}
 		}
-		return nil
+		return pos, nil
 	} else {
 		return f.packVal(buf, val, length)
 	}

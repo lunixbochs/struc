@@ -47,7 +47,7 @@ func PackWithOrder(w io.Writer, data interface{}, order binary.ByteOrder) error 
 	}
 	size := fields.Sizeof(val)
 	buf := make([]byte, size)
-	if err := fields.Pack(buf, val); err != nil {
+	if _, err := fields.Pack(buf, val); err != nil {
 		return err
 	}
 	_, err = w.Write(buf)
