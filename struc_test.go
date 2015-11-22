@@ -8,7 +8,7 @@ import (
 )
 
 type Nested struct {
-	Test2 int
+	Test2 int `struc:"int8"`
 }
 
 type Example struct {
@@ -67,7 +67,7 @@ var reference = &Example{
 	4, "1234",
 	4, []byte("5678"),
 	Nested{1}, &Nested{2}, &five,
-	2, []Nested{{3}, {4}},
+	6, []Nested{{3}, {4}, {5}, {6}, {7}, {8}},
 }
 
 var referenceBytes = []byte{
@@ -90,12 +90,11 @@ var referenceBytes = []byte{
 	04, '1', '2', '3', '4', // real string
 	04, '5', '6', '7', '8', // fake []byte(string)
 
-	0, 0, 0, 1, // Nested{1}
-	0, 0, 0, 2, // &Nested{2}
+	1, 2, // Nested{1}, Nested{2}
 	0, 0, 0, 0, 0, 0, 0, 5, // &five
 
-	0, 0, 0, 2, // int32(2)
-	0, 0, 0, 3, 0, 0, 0, 4, // [Nested{3}, Nested{4}]
+	0, 0, 0, 6, // int32(6)
+	3, 4, 5, 6, 7, 8, // [Nested{3}, ...Nested{8}]
 }
 
 func TestCodec(t *testing.T) {

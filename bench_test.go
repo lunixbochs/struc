@@ -144,3 +144,22 @@ func BenchmarkManualDecode(b *testing.B) {
 		copy(o.Data, tmp[23:])
 	}
 }
+
+func BenchmarkFullEncode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var buf bytes.Buffer
+		if err := Pack(&buf, reference); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkFullDecode(b *testing.B) {
+	var out Example
+	for i := 0; i < b.N; i++ {
+		buf := bytes.NewBuffer(referenceBytes)
+		if err := Unpack(buf, &out); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
