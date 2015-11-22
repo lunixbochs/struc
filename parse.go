@@ -141,6 +141,21 @@ func parseFields(v reflect.Value) (Fields, error) {
 		if f.Len == -1 && f.Sizefrom == nil {
 			return nil, fmt.Errorf("struc: field `%s` is a slice with no length or sizeof field", field.Name)
 		}
+		// recurse into nested structs
+		// TODO: handle loops (probably by indirecting the []Field and putting pointer in cache)
+		if f.Type == Struct {
+			typ := field.Type
+			if f.Ptr {
+				typ = typ.Elem()
+			}
+			if f.Slice {
+				typ = typ.Elem()
+			}
+			f.Fields, err = parseFields(reflect.New(typ))
+			if err != nil {
+				return nil, err
+			}
+		}
 		fields = append(fields, f)
 	}
 	fieldCache[t] = fields

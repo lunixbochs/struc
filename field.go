@@ -20,6 +20,7 @@ type Field struct {
 	Order    binary.ByteOrder
 	Sizeof   []int
 	Sizefrom []int
+	Fields   Fields
 	kind     reflect.Kind
 }
 
@@ -53,10 +54,7 @@ func (f *Field) Size(val reflect.Value) int {
 		}
 		size := 0
 		for _, val := range vals {
-			fields, err := parseFields(val)
-			if err == nil {
-				size += fields.Sizeof(val)
-			}
+			size += f.Fields.Sizeof(val)
 		}
 		return size
 	} else if f.Type == Pad {
@@ -79,11 +77,7 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int) error {
 	}
 	switch f.Type {
 	case Struct:
-		fields, err := parseFields(val)
-		if err != nil {
-			return err
-		}
-		return fields.Pack(buf, val)
+		return f.Fields.Pack(buf, val)
 	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64:
 		var n uint64
 		switch f.kind {
@@ -155,10 +149,7 @@ func (f *Field) Pack(buf []byte, val reflect.Value, length int) error {
 			}
 			// TODO: make packVal() return the length?
 			if f.Type == Struct {
-				fields, err := parseFields(cur)
-				if err == nil {
-					pos += fields.Sizeof(cur)
-				}
+				pos += f.Fields.Sizeof(cur)
 			} else {
 				pos += f.Type.Size()
 			}
