@@ -101,9 +101,6 @@ func parseField(f reflect.StructField) (fd *Field, err error) {
 	return
 }
 
-var fieldCache = make(map[reflect.Type]Fields)
-var parseLock sync.Mutex
-
 func parseFieldsLocked(v reflect.Value) (Fields, error) {
 	// we need to repeat this logic because parseFields() below can't be recursively called due to locking
 	for v.Kind() == reflect.Ptr {
@@ -161,12 +158,19 @@ func parseFieldsLocked(v reflect.Value) (Fields, error) {
 	return fields, nil
 }
 
+var fieldCache = make(map[reflect.Type]Fields)
+var fieldCacheLock sync.RWMutex
+var parseLock sync.Mutex
+
 func parseFields(v reflect.Value) (Fields, error) {
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 	t := v.Type()
+	// this read lock will be manually released on a cache hit, or before parsing
+	fieldCacheLock.RLock()
 	if cached, ok := fieldCache[t]; ok {
+		fieldCacheLock.RUnlock()
 		return cached, nil
 	}
 	// take a lock so multiple goroutines can't parse fields at once
@@ -174,12 +178,18 @@ func parseFields(v reflect.Value) (Fields, error) {
 	defer parseLock.Unlock()
 	// check a second time, just in case it was parsed by another goroutine during lock
 	if cached, ok := fieldCache[t]; ok {
+		fieldCacheLock.RUnlock()
 		return cached, nil
 	}
+	// if we hold read lock during parse, that's an extra ~70,000ns of lock time
+	// so it's manually released here instead of deferring
+	fieldCacheLock.RUnlock()
 	fields, err := parseFieldsLocked(v)
 	if err != nil {
 		return nil, err
 	}
+	fieldCacheLock.Lock()
 	fieldCache[t] = fields
+	fieldCacheLock.Unlock()
 	return fields, nil
 }
