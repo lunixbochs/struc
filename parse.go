@@ -162,28 +162,37 @@ var fieldCache = make(map[reflect.Type]Fields)
 var fieldCacheLock sync.RWMutex
 var parseLock sync.Mutex
 
+func fieldCacheLookup(t reflect.Type) Fields {
+	fieldCacheLock.RLock()
+	defer fieldCacheLock.RUnlock()
+	if cached, ok := fieldCache[t]; ok {
+		return cached
+	}
+	return nil
+}
+
 func parseFields(v reflect.Value) (Fields, error) {
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 	t := v.Type()
-	// this read lock will be manually released on a cache hit, or before parsing
-	fieldCacheLock.RLock()
-	if cached, ok := fieldCache[t]; ok {
-		fieldCacheLock.RUnlock()
+
+	// fast path: hopefully the field parsing is already cached
+	if cached := fieldCacheLookup(t); cached != nil {
 		return cached, nil
 	}
-	// take a lock so multiple goroutines can't parse fields at once
+
+	// hold a global lock so multiple goroutines can't parse (the same) fields at once
 	parseLock.Lock()
 	defer parseLock.Unlock()
-	// check a second time, just in case it was parsed by another goroutine during lock
-	if cached, ok := fieldCache[t]; ok {
-		fieldCacheLock.RUnlock()
+
+	// check cache a second time, in case parseLock was just released by
+	// another thread who filled the cache for us
+	if cached := fieldCacheLookup(t); cached != nil {
 		return cached, nil
 	}
-	// if we hold read lock during parse, that's an extra ~70,000ns of lock time
-	// so it's manually released here instead of deferring
-	fieldCacheLock.RUnlock()
+
+	// no luck, time to parse and fill the cache ourselves
 	fields, err := parseFieldsLocked(v)
 	if err != nil {
 		return nil, err
