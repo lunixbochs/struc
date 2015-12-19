@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // struc:"int32,big,sizeof=Data"
@@ -101,15 +102,14 @@ func parseField(f reflect.StructField) (fd *Field, err error) {
 }
 
 var fieldCache = make(map[reflect.Type]Fields)
+var parseLock sync.Mutex
 
-func parseFields(v reflect.Value) (Fields, error) {
+func parseFieldsLocked(v reflect.Value) (Fields, error) {
+	// we need to repeat this logic because parseFields() below can't be recursively called due to locking
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 	t := v.Type()
-	if cached, ok := fieldCache[t]; ok {
-		return cached, nil
-	}
 	if v.NumField() < 1 {
 		return nil, errors.New("struc: Struct has no fields.")
 	}
@@ -151,12 +151,34 @@ func parseFields(v reflect.Value) (Fields, error) {
 			if f.Slice {
 				typ = typ.Elem()
 			}
-			f.Fields, err = parseFields(reflect.New(typ))
+			f.Fields, err = parseFieldsLocked(reflect.New(typ))
 			if err != nil {
 				return nil, err
 			}
 		}
 		fields = append(fields, f)
+	}
+	return fields, nil
+}
+
+func parseFields(v reflect.Value) (Fields, error) {
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	t := v.Type()
+	if cached, ok := fieldCache[t]; ok {
+		return cached, nil
+	}
+	// take a lock so multiple goroutines can't parse fields at once
+	parseLock.Lock()
+	defer parseLock.Unlock()
+	// check a second time, just in case it was parsed by another goroutine during lock
+	if cached, ok := fieldCache[t]; ok {
+		return cached, nil
+	}
+	fields, err := parseFieldsLocked(v)
+	if err != nil {
+		return nil, err
 	}
 	fieldCache[t] = fields
 	return fields, nil
