@@ -116,7 +116,7 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 				vals := reflect.MakeSlice(v.Type(), length, length)
 				for i := 0; i < length; i++ {
 					v := vals.Index(i)
-					fields, err := parseFieldsLocked(v)
+					fields, err := parseFields(v)
 					if err != nil {
 						return err
 					}
@@ -127,7 +127,7 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 				v.Set(vals)
 			} else {
 				// TODO: DRY (we repeat the inner loop above)
-				fields, err := parseFieldsLocked(v)
+				fields, err := parseFields(v)
 				if err != nil {
 					return err
 				}
