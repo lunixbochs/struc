@@ -2,6 +2,7 @@ package struc
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -37,6 +38,25 @@ func (f Fields) Sizeof(val reflect.Value) int {
 	return size
 }
 
+func (f Fields) sizefrom(val reflect.Value, index []int) int {
+	field := val.FieldByIndex(index)
+	switch field.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return int(field.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		n := int(field.Uint())
+		// all the builtin array length types are native int
+		// so this guards against weird truncation
+		if n < 0 {
+			return 0
+		}
+		return n
+	default:
+		name := val.Type().FieldByIndex(index).Name
+		panic(fmt.Sprintf("sizeof field %T.%s not an integer type", val.Interface(), name))
+	}
+}
+
 func (f Fields) Pack(buf []byte, val reflect.Value) (int, error) {
 	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
@@ -49,14 +69,20 @@ func (f Fields) Pack(buf []byte, val reflect.Value) (int, error) {
 		v := val.Field(i)
 		length := field.Len
 		if field.Sizefrom != nil {
-			length = int(val.FieldByIndex(field.Sizefrom).Int())
+			length = f.sizefrom(val, field.Sizefrom)
 		}
 		if length <= 0 && field.Slice {
 			length = v.Len()
 		}
 		if field.Sizeof != nil {
 			length := val.FieldByIndex(field.Sizeof).Len()
-			v = reflect.ValueOf(length)
+			switch field.kind {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				v = reflect.ValueOf(length)
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				ulen := uint64(length)
+				v = reflect.ValueOf(ulen)
+			}
 		}
 		if n, err := field.Pack(buf[pos:], v, length); err != nil {
 			return n, err
@@ -80,7 +106,7 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 		v := val.Field(i)
 		length := field.Len
 		if field.Sizefrom != nil {
-			length = int(val.FieldByIndex(field.Sizefrom).Int())
+			length = f.sizefrom(val, field.Sizefrom)
 		}
 		if v.Kind() == reflect.Ptr && !v.Elem().IsValid() {
 			v.Set(reflect.New(v.Type().Elem()))
