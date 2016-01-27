@@ -24,7 +24,7 @@ func (f Fields) String() string {
 	return "{" + strings.Join(fields, ", ") + "}"
 }
 
-func (f Fields) Sizeof(val reflect.Value) int {
+func (f Fields) Sizeof(val reflect.Value, options *Options) int {
 	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	}
@@ -32,7 +32,7 @@ func (f Fields) Sizeof(val reflect.Value) int {
 	for i, field := range f {
 		v := val.Field(i)
 		if v.CanSet() {
-			size += field.Size(v)
+			size += field.Size(v, options)
 		}
 	}
 	return size
@@ -137,7 +137,7 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value, options *Options) error {
 			}
 			continue
 		} else {
-			size := length * field.Type.Size()
+			size := length * field.Type.Resolve(options).Size()
 			if size < 8 {
 				buf = tmp[:size]
 			} else {

@@ -8,7 +8,21 @@ import (
 )
 
 type Options struct {
-	Order binary.ByteOrder
+	IntSize int
+	Order   binary.ByteOrder
+}
+
+func (o *Options) Validate() error {
+	if o.IntSize == 0 {
+		o.IntSize = 32
+	} else {
+		switch o.IntSize {
+		case 8, 16, 32, 64:
+		default:
+			return fmt.Errorf("Invalid Options.IntSize: %d. Must be in (8, 16, 32, 64)", o.IntSize)
+		}
+	}
+	return nil
 }
 
 var emptyOptions = &Options{}
@@ -43,6 +57,9 @@ func PackWithOptions(w io.Writer, data interface{}, options *Options) error {
 	if options == nil {
 		options = emptyOptions
 	}
+	if err := options.Validate(); err != nil {
+		return err
+	}
 	val, fields, err := prep(data)
 	if err != nil {
 		return err
@@ -50,7 +67,7 @@ func PackWithOptions(w io.Writer, data interface{}, options *Options) error {
 	if val.Type().Kind() == reflect.String {
 		val = val.Convert(reflect.TypeOf([]byte{}))
 	}
-	size := fields.Sizeof(val)
+	size := fields.Sizeof(val, options)
 	buf := make([]byte, size)
 	if _, err := fields.Pack(buf, val, options); err != nil {
 		return err
@@ -67,6 +84,9 @@ func UnpackWithOptions(r io.Reader, data interface{}, options *Options) error {
 	if options == nil {
 		options = emptyOptions
 	}
+	if err := options.Validate(); err != nil {
+		return err
+	}
 	val, fields, err := prep(data)
 	if err != nil {
 		return err
@@ -75,9 +95,19 @@ func UnpackWithOptions(r io.Reader, data interface{}, options *Options) error {
 }
 
 func Sizeof(data interface{}) (int, error) {
+	return SizeofWithOptions(data, nil)
+}
+
+func SizeofWithOptions(data interface{}, options *Options) (int, error) {
+	if options == nil {
+		options = emptyOptions
+	}
+	if err := options.Validate(); err != nil {
+		return 0, err
+	}
 	val, fields, err := prep(data)
 	if err != nil {
 		return 0, err
 	}
-	return fields.Sizeof(val), nil
+	return fields.Sizeof(val, options), nil
 }

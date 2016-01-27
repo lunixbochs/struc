@@ -43,8 +43,9 @@ func (f *Field) String() string {
 	return "{" + out + "}"
 }
 
-func (f *Field) Size(val reflect.Value) int {
-	if f.Type == Struct {
+func (f *Field) Size(val reflect.Value, options *Options) int {
+	typ := f.Type.Resolve(options)
+	if typ == Struct {
 		vals := []reflect.Value{val}
 		if f.Slice {
 			vals = make([]reflect.Value, val.Len())
@@ -54,19 +55,19 @@ func (f *Field) Size(val reflect.Value) int {
 		}
 		size := 0
 		for _, val := range vals {
-			size += f.Fields.Sizeof(val)
+			size += f.Fields.Sizeof(val, options)
 		}
 		return size
-	} else if f.Type == Pad {
+	} else if typ == Pad {
 		return f.Len
 	} else if f.Slice || f.kind == reflect.String {
 		length := val.Len()
 		if f.Len > 1 {
 			length = f.Len
 		}
-		return length * f.Type.Size()
+		return length * typ.Size()
 	} else {
-		return f.Type.Size()
+		return typ.Size()
 	}
 }
 
@@ -78,11 +79,12 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int, options *Opti
 	if f.Ptr {
 		val = val.Elem()
 	}
-	switch f.Type {
+	typ := f.Type.Resolve(options)
+	switch typ {
 	case Struct:
 		return f.Fields.Pack(buf, val, options)
 	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64:
-		size = f.Type.Size()
+		size = typ.Size()
 		var n uint64
 		switch f.kind {
 		case reflect.Bool:
@@ -96,7 +98,7 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int, options *Opti
 		default:
 			n = val.Uint()
 		}
-		switch f.Type {
+		switch typ {
 		case Bool:
 			if n != 0 {
 				buf[0] = 1
@@ -113,9 +115,9 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int, options *Opti
 			order.PutUint64(buf, uint64(n))
 		}
 	case Float32, Float64:
-		size = f.Type.Size()
+		size = typ.Size()
 		n := val.Float()
-		switch f.Type {
+		switch typ {
 		case Float32:
 			order.PutUint32(buf, math.Float32bits(float32(n)))
 		case Float64:
@@ -136,7 +138,8 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int, options *Opti
 }
 
 func (f *Field) Pack(buf []byte, val reflect.Value, length int, options *Options) (int, error) {
-	if f.Type == Pad {
+	typ := f.Type.Resolve(options)
+	if typ == Pad {
 		for i := 0; i < length; i++ {
 			buf[i] = 0
 		}
@@ -144,7 +147,7 @@ func (f *Field) Pack(buf []byte, val reflect.Value, length int, options *Options
 	}
 	if f.Slice {
 		// special case byte slices for performance
-		if !f.Array && f.Type == Uint8 && f.defType == Uint8 {
+		if !f.Array && typ == Uint8 && f.defType == Uint8 {
 			copy(buf, val.Bytes())
 			return val.Len(), nil
 		}
@@ -171,10 +174,11 @@ func (f *Field) unpackVal(buf []byte, val reflect.Value, length int, options *Op
 	if f.Ptr {
 		val = val.Elem()
 	}
-	switch f.Type {
+	typ := f.Type.Resolve(options)
+	switch typ {
 	case Float32, Float64:
 		var n float64
-		switch f.Type {
+		switch typ {
 		case Float32:
 			n = float64(math.Float32frombits(order.Uint32(buf)))
 		case Float64:
@@ -188,7 +192,7 @@ func (f *Field) unpackVal(buf []byte, val reflect.Value, length int, options *Op
 		}
 	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64:
 		var n uint64
-		switch f.Type {
+		switch typ {
 		case Bool, Int8, Uint8:
 			n = uint64(buf[0])
 		case Int16, Uint16:
@@ -211,8 +215,9 @@ func (f *Field) unpackVal(buf []byte, val reflect.Value, length int, options *Op
 }
 
 func (f *Field) Unpack(buf []byte, val reflect.Value, length int, options *Options) error {
-	if f.Type == Pad || f.kind == reflect.String {
-		if f.Type == Pad {
+	typ := f.Type.Resolve(options)
+	if typ == Pad || f.kind == reflect.String {
+		if typ == Pad {
 			return nil
 		} else {
 			val.SetString(string(buf))
@@ -225,12 +230,12 @@ func (f *Field) Unpack(buf []byte, val reflect.Value, length int, options *Optio
 			val.Set(val.Slice(0, length))
 		}
 		// special case byte slices for performance
-		if !f.Array && f.Type == Uint8 && f.defType == Uint8 {
+		if !f.Array && typ == Uint8 && f.defType == Uint8 {
 			copy(val.Bytes(), buf[:length])
 			return nil
 		}
 		pos := 0
-		size := f.Type.Size()
+		size := typ.Size()
 		for i := 0; i < length; i++ {
 			if err := f.unpackVal(buf[pos:pos+size], val.Index(i), 1, options); err != nil {
 				return err

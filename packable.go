@@ -25,7 +25,7 @@ func (b byteWriter) Write(p []byte) (int, error) {
 
 type Packable interface {
 	String() string
-	Sizeof(val reflect.Value) int
+	Sizeof(val reflect.Value, options *Options) int
 	Pack(buf []byte, val reflect.Value, options *Options) (int, error)
 	Unpack(r io.Reader, val reflect.Value, options *Options) error
 }
@@ -39,7 +39,7 @@ func (b *binaryFallback) String() string {
 	return b.val.String()
 }
 
-func (b *binaryFallback) Sizeof(val reflect.Value) int {
+func (b *binaryFallback) Sizeof(val reflect.Value, options *Options) int {
 	return binary.Size(val.Interface())
 }
 

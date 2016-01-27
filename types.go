@@ -1,6 +1,7 @@
 package struc
 
 import (
+	"fmt"
 	"reflect"
 )
 
@@ -9,6 +10,8 @@ type Type int
 const (
 	Pad Type = iota
 	Bool
+	Int
+	Uint
 	Int8
 	Uint8
 	Int16
@@ -24,12 +27,46 @@ const (
 	Ptr
 )
 
+func (t Type) Resolve(options *Options) Type {
+	switch t {
+	case Int:
+		switch options.IntSize {
+		case 8:
+			return Int8
+		case 16:
+			return Int16
+		case 32:
+			return Int32
+		case 64:
+			return Int64
+		default:
+			panic(fmt.Sprintf("unsupported int size: %d", options.IntSize))
+		}
+	case Uint:
+		switch options.IntSize {
+		case 8:
+			return Uint8
+		case 16:
+			return Uint16
+		case 32:
+			return Uint32
+		case 64:
+			return Uint64
+		default:
+			panic(fmt.Sprintf("unsupported int size: %d", options.IntSize))
+		}
+	}
+	return t
+}
+
 func (t Type) String() string {
 	return typeNames[t]
 }
 
 func (t Type) Size() int {
 	switch t {
+	case Int, Uint:
+		panic("Int/Uint must be converted to another type using options.IntSize")
 	case Pad, String, Int8, Uint8, Bool:
 		return 1
 	case Int16, Uint16:
@@ -81,12 +118,12 @@ var reflectTypeMap = map[reflect.Kind]Type{
 	reflect.Bool:    Bool,
 	reflect.Int8:    Int8,
 	reflect.Int16:   Int16,
-	reflect.Int:     Int32,
+	reflect.Int:     Int,
 	reflect.Int32:   Int32,
 	reflect.Int64:   Int64,
 	reflect.Uint8:   Uint8,
 	reflect.Uint16:  Uint16,
-	reflect.Uint:    Uint32,
+	reflect.Uint:    Uint,
 	reflect.Uint32:  Uint32,
 	reflect.Uint64:  Uint64,
 	reflect.Float32: Float32,
