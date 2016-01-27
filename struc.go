@@ -7,6 +7,12 @@ import (
 	"reflect"
 )
 
+type Options struct {
+	Order binary.ByteOrder
+}
+
+var emptyOptions = &Options{}
+
 func prep(data interface{}) (reflect.Value, Packable, error) {
 	value := reflect.ValueOf(data)
 	for value.Kind() == reflect.Ptr {
@@ -30,24 +36,23 @@ func prep(data interface{}) (reflect.Value, Packable, error) {
 }
 
 func Pack(w io.Writer, data interface{}) error {
-	return PackWithOrder(w, data, nil)
+	return PackWithOptions(w, data, nil)
 }
 
-// TODO: this is destructive with caching
-func PackWithOrder(w io.Writer, data interface{}, order binary.ByteOrder) error {
+func PackWithOptions(w io.Writer, data interface{}, options *Options) error {
+	if options == nil {
+		options = emptyOptions
+	}
 	val, fields, err := prep(data)
 	if err != nil {
 		return err
-	}
-	if order != nil {
-		fields.SetByteOrder(order)
 	}
 	if val.Type().Kind() == reflect.String {
 		val = val.Convert(reflect.TypeOf([]byte{}))
 	}
 	size := fields.Sizeof(val)
 	buf := make([]byte, size)
-	if _, err := fields.Pack(buf, val); err != nil {
+	if _, err := fields.Pack(buf, val, options); err != nil {
 		return err
 	}
 	_, err = w.Write(buf)
@@ -55,18 +60,18 @@ func PackWithOrder(w io.Writer, data interface{}, order binary.ByteOrder) error 
 }
 
 func Unpack(r io.Reader, data interface{}) error {
-	return UnpackWithOrder(r, data, nil)
+	return UnpackWithOptions(r, data, nil)
 }
 
-func UnpackWithOrder(r io.Reader, data interface{}, order binary.ByteOrder) error {
+func UnpackWithOptions(r io.Reader, data interface{}, options *Options) error {
+	if options == nil {
+		options = emptyOptions
+	}
 	val, fields, err := prep(data)
 	if err != nil {
 		return err
 	}
-	if order != nil {
-		fields.SetByteOrder(order)
-	}
-	return fields.Unpack(r, val)
+	return fields.Unpack(r, val, options)
 }
 
 func Sizeof(data interface{}) (int, error) {

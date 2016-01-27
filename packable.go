@@ -24,20 +24,15 @@ func (b byteWriter) Write(p []byte) (int, error) {
 }
 
 type Packable interface {
-	SetByteOrder(order binary.ByteOrder)
 	String() string
 	Sizeof(val reflect.Value) int
-	Pack(buf []byte, val reflect.Value) (int, error)
-	Unpack(r io.Reader, val reflect.Value) error
+	Pack(buf []byte, val reflect.Value, options *Options) (int, error)
+	Unpack(r io.Reader, val reflect.Value, options *Options) error
 }
 
 type binaryFallback struct {
 	val   reflect.Value
 	order binary.ByteOrder
-}
-
-func (b *binaryFallback) SetByteOrder(order binary.ByteOrder) {
-	b.order = order
 }
 
 func (b *binaryFallback) String() string {
@@ -48,12 +43,20 @@ func (b *binaryFallback) Sizeof(val reflect.Value) int {
 	return binary.Size(val.Interface())
 }
 
-func (b *binaryFallback) Pack(buf []byte, val reflect.Value) (int, error) {
+func (b *binaryFallback) Pack(buf []byte, val reflect.Value, options *Options) (int, error) {
 	tmp := byteWriter{buf: buf}
-	err := binary.Write(tmp, b.order, val.Interface())
+	order := b.order
+	if options.Order != nil {
+		order = options.Order
+	}
+	err := binary.Write(tmp, order, val.Interface())
 	return tmp.pos, err
 }
 
-func (b *binaryFallback) Unpack(r io.Reader, val reflect.Value) error {
-	return binary.Read(r, b.order, val.Interface())
+func (b *binaryFallback) Unpack(r io.Reader, val reflect.Value, options *Options) error {
+	order := b.order
+	if options.Order != nil {
+		order = options.Order
+	}
+	return binary.Read(r, order, val.Interface())
 }

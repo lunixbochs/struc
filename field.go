@@ -70,14 +70,17 @@ func (f *Field) Size(val reflect.Value) int {
 	}
 }
 
-func (f *Field) packVal(buf []byte, val reflect.Value, length int) (size int, err error) {
+func (f *Field) packVal(buf []byte, val reflect.Value, length int, options *Options) (size int, err error) {
 	order := f.Order
+	if options.Order != nil {
+		order = options.Order
+	}
 	if f.Ptr {
 		val = val.Elem()
 	}
 	switch f.Type {
 	case Struct:
-		return f.Fields.Pack(buf, val)
+		return f.Fields.Pack(buf, val, options)
 	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64:
 		size = f.Type.Size()
 		var n uint64
@@ -132,7 +135,7 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int) (size int, er
 	return
 }
 
-func (f *Field) Pack(buf []byte, val reflect.Value, length int) (int, error) {
+func (f *Field) Pack(buf []byte, val reflect.Value, length int, options *Options) (int, error) {
 	if f.Type == Pad {
 		for i := 0; i < length; i++ {
 			buf[i] = 0
@@ -148,7 +151,7 @@ func (f *Field) Pack(buf []byte, val reflect.Value, length int) (int, error) {
 		pos := 0
 		for i := 0; i < length; i++ {
 			cur := val.Index(i)
-			if n, err := f.packVal(buf[pos:], cur, 1); err != nil {
+			if n, err := f.packVal(buf[pos:], cur, 1, options); err != nil {
 				return pos, err
 			} else {
 				pos += n
@@ -156,12 +159,15 @@ func (f *Field) Pack(buf []byte, val reflect.Value, length int) (int, error) {
 		}
 		return pos, nil
 	} else {
-		return f.packVal(buf, val, length)
+		return f.packVal(buf, val, length, options)
 	}
 }
 
-func (f *Field) unpackVal(buf []byte, val reflect.Value, length int) error {
+func (f *Field) unpackVal(buf []byte, val reflect.Value, length int, options *Options) error {
 	order := f.Order
+	if options.Order != nil {
+		order = options.Order
+	}
 	if f.Ptr {
 		val = val.Elem()
 	}
@@ -204,7 +210,7 @@ func (f *Field) unpackVal(buf []byte, val reflect.Value, length int) error {
 	return nil
 }
 
-func (f *Field) Unpack(buf []byte, val reflect.Value, length int) error {
+func (f *Field) Unpack(buf []byte, val reflect.Value, length int, options *Options) error {
 	if f.Type == Pad || f.kind == reflect.String {
 		if f.Type == Pad {
 			return nil
@@ -226,13 +232,13 @@ func (f *Field) Unpack(buf []byte, val reflect.Value, length int) error {
 		pos := 0
 		size := f.Type.Size()
 		for i := 0; i < length; i++ {
-			if err := f.unpackVal(buf[pos:pos+size], val.Index(i), 1); err != nil {
+			if err := f.unpackVal(buf[pos:pos+size], val.Index(i), 1, options); err != nil {
 				return err
 			}
 			pos += size
 		}
 		return nil
 	} else {
-		return f.unpackVal(buf, val, length)
+		return f.unpackVal(buf, val, length, options)
 	}
 }

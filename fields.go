@@ -57,7 +57,7 @@ func (f Fields) sizefrom(val reflect.Value, index []int) int {
 	}
 }
 
-func (f Fields) Pack(buf []byte, val reflect.Value) (int, error) {
+func (f Fields) Pack(buf []byte, val reflect.Value, options *Options) (int, error) {
 	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	}
@@ -84,7 +84,7 @@ func (f Fields) Pack(buf []byte, val reflect.Value) (int, error) {
 				v = reflect.ValueOf(ulen)
 			}
 		}
-		if n, err := field.Pack(buf[pos:], v, length); err != nil {
+		if n, err := field.Pack(buf[pos:], v, length, options); err != nil {
 			return n, err
 		} else {
 			pos += n
@@ -93,7 +93,7 @@ func (f Fields) Pack(buf []byte, val reflect.Value) (int, error) {
 	return pos, nil
 }
 
-func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
+func (f Fields) Unpack(r io.Reader, val reflect.Value, options *Options) error {
 	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	}
@@ -120,7 +120,7 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 					if err != nil {
 						return err
 					}
-					if err := fields.Unpack(r, v); err != nil {
+					if err := fields.Unpack(r, v, options); err != nil {
 						return err
 					}
 				}
@@ -131,7 +131,7 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 				if err != nil {
 					return err
 				}
-				if err := fields.Unpack(r, v); err != nil {
+				if err := fields.Unpack(r, v, options); err != nil {
 					return err
 				}
 			}
@@ -146,7 +146,7 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value) error {
 			if _, err := io.ReadFull(r, buf); err != nil {
 				return err
 			}
-			err := field.Unpack(buf[:size], v, length)
+			err := field.Unpack(buf[:size], v, length, options)
 			if err != nil {
 				return err
 			}
