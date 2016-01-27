@@ -8,8 +8,9 @@ import (
 )
 
 type Options struct {
-	IntSize int
-	Order   binary.ByteOrder
+	ByteAlign int
+	IntSize   int
+	Order     binary.ByteOrder
 }
 
 func (o *Options) Validate() error {

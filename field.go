@@ -45,6 +45,7 @@ func (f *Field) String() string {
 
 func (f *Field) Size(val reflect.Value, options *Options) int {
 	typ := f.Type.Resolve(options)
+	size := 0
 	if typ == Struct {
 		vals := []reflect.Value{val}
 		if f.Slice {
@@ -53,22 +54,25 @@ func (f *Field) Size(val reflect.Value, options *Options) int {
 				vals[i] = val.Index(i)
 			}
 		}
-		size := 0
 		for _, val := range vals {
 			size += f.Fields.Sizeof(val, options)
 		}
-		return size
 	} else if typ == Pad {
-		return f.Len
+		size = f.Len
 	} else if f.Slice || f.kind == reflect.String {
 		length := val.Len()
 		if f.Len > 1 {
 			length = f.Len
 		}
-		return length * typ.Size()
+		size = length * typ.Size()
 	} else {
-		return typ.Size()
+		size = typ.Size()
 	}
+	align := options.ByteAlign
+	if align > 0 && size < align {
+		size = align
+	}
+	return size
 }
 
 func (f *Field) packVal(buf []byte, val reflect.Value, length int, options *Options) (size int, err error) {
