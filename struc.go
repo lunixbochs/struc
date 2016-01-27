@@ -9,18 +9,18 @@ import (
 
 type Options struct {
 	ByteAlign int
-	IntSize   int
+	PtrSize   int
 	Order     binary.ByteOrder
 }
 
 func (o *Options) Validate() error {
-	if o.IntSize == 0 {
-		o.IntSize = 32
+	if o.PtrSize == 0 {
+		o.PtrSize = 32
 	} else {
-		switch o.IntSize {
+		switch o.PtrSize {
 		case 8, 16, 32, 64:
 		default:
-			return fmt.Errorf("Invalid Options.IntSize: %d. Must be in (8, 16, 32, 64)", o.IntSize)
+			return fmt.Errorf("Invalid Options.PtrSize: %d. Must be in (8, 16, 32, 64)", o.PtrSize)
 		}
 	}
 	return nil

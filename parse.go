@@ -97,7 +97,14 @@ func parseField(f reflect.StructField) (fd *Field, err error) {
 		fd.Type = fd.defType
 		return
 	}
-	err = errors.New("struc: Could not find field type.")
+	switch f.Type {
+	case reflect.TypeOf(Size_t(0)):
+		fd.Type = SizeType
+	case reflect.TypeOf(Off_t(0)):
+		fd.Type = OffType
+	default:
+		err = errors.New("struc: Could not find field type.")
+	}
 	return
 }
 

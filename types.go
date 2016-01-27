@@ -11,7 +11,6 @@ const (
 	Pad Type = iota
 	Bool
 	Int
-	Uint
 	Int8
 	Uint8
 	Int16
@@ -25,12 +24,15 @@ const (
 	String
 	Struct
 	Ptr
+
+	SizeType
+	OffType
 )
 
 func (t Type) Resolve(options *Options) Type {
 	switch t {
-	case Int:
-		switch options.IntSize {
+	case OffType:
+		switch options.PtrSize {
 		case 8:
 			return Int8
 		case 16:
@@ -40,10 +42,10 @@ func (t Type) Resolve(options *Options) Type {
 		case 64:
 			return Int64
 		default:
-			panic(fmt.Sprintf("unsupported int size: %d", options.IntSize))
+			panic(fmt.Sprintf("unsupported ptr bits: %d", options.PtrSize))
 		}
-	case Uint:
-		switch options.IntSize {
+	case SizeType:
+		switch options.PtrSize {
 		case 8:
 			return Uint8
 		case 16:
@@ -53,7 +55,7 @@ func (t Type) Resolve(options *Options) Type {
 		case 64:
 			return Uint64
 		default:
-			panic(fmt.Sprintf("unsupported int size: %d", options.IntSize))
+			panic(fmt.Sprintf("unsupported ptr bits: %d", options.PtrSize))
 		}
 	}
 	return t
@@ -65,8 +67,8 @@ func (t Type) String() string {
 
 func (t Type) Size() int {
 	switch t {
-	case Int, Uint:
-		panic("Int/Uint must be converted to another type using options.IntSize")
+	case SizeType, OffType:
+		panic("Size_t/Off_t types must be converted to another type using options.PtrSize")
 	case Pad, String, Int8, Uint8, Bool:
 		return 1
 	case Int16, Uint16:
@@ -94,36 +96,32 @@ var typeLookup = map[string]Type{
 	"uint64":  Uint64,
 	"float32": Float32,
 	"float64": Float64,
+
+	"size_t": SizeType,
+	"off_t":  OffType,
 }
 
-var typeNames = map[Type]string{
-	Pad:     "pad",
-	Bool:    "bool",
-	Int8:    "int8",
-	Uint8:   "uint8",
-	Int16:   "int16",
-	Uint16:  "uint16",
-	Int32:   "int32",
-	Uint32:  "uint32",
-	Int64:   "int64",
-	Uint64:  "uint64",
-	Float32: "float32",
-	Float64: "float64",
-	String:  "string",
-	Struct:  "struct",
-	Ptr:     "ptr",
+var typeNames = map[Type]string{}
+
+func init() {
+	for name, enum := range typeLookup {
+		typeNames[enum] = name
+	}
 }
+
+type Size_t uint64
+type Off_t int64
 
 var reflectTypeMap = map[reflect.Kind]Type{
 	reflect.Bool:    Bool,
 	reflect.Int8:    Int8,
 	reflect.Int16:   Int16,
-	reflect.Int:     Int,
+	reflect.Int:     Int32,
 	reflect.Int32:   Int32,
 	reflect.Int64:   Int64,
 	reflect.Uint8:   Uint8,
 	reflect.Uint16:  Uint16,
-	reflect.Uint:    Uint,
+	reflect.Uint:    Uint32,
 	reflect.Uint32:  Uint32,
 	reflect.Uint64:  Uint64,
 	reflect.Float32: Float32,
