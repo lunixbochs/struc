@@ -29,8 +29,7 @@ func (f *Field) String() string {
 	if f.Type == Pad {
 		return fmt.Sprintf("{type: Pad, len: %d}", f.Len)
 	} else {
-		typeName := typeNames[f.Type]
-		out = fmt.Sprintf("type: %s, order: %v", typeName, f.Order)
+		out = fmt.Sprintf("type: %s, order: %v", f.Type.String(), f.Order)
 	}
 	if f.Sizefrom != nil {
 		out += fmt.Sprintf(", sizefrom: %v", f.Sizefrom)
@@ -65,6 +64,8 @@ func (f *Field) Size(val reflect.Value, options *Options) int {
 			length = f.Len
 		}
 		size = length * typ.Size()
+	} else if typ == CustomType {
+		return val.Addr().Interface().(Custom).Size(options)
 	} else {
 		size = typ.Size()
 	}
@@ -137,6 +138,10 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int, options *Opti
 			size = val.Len()
 			copy(buf, val.Bytes())
 		}
+	case CustomType:
+		return val.Addr().Interface().(Custom).Pack(buf, options)
+	default:
+		panic(fmt.Sprintf("no pack handler for type: %s", typ))
 	}
 	return
 }
@@ -214,6 +219,8 @@ func (f *Field) unpackVal(buf []byte, val reflect.Value, length int, options *Op
 		default:
 			val.SetUint(n)
 		}
+	default:
+		panic(fmt.Sprintf("no unpack handler for type: %s", typ))
 	}
 	return nil
 }

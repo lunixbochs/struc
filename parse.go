@@ -73,6 +73,12 @@ func parseField(f reflect.StructField) (fd *Field, err error) {
 		fd.Ptr = true
 		fd.kind = f.Type.Elem().Kind()
 	}
+	// check for custom types
+	tmp := reflect.New(f.Type)
+	if _, ok := tmp.Interface().(Custom); ok {
+		fd.Type = CustomType
+		return
+	}
 	var defTypeOk bool
 	fd.defType, defTypeOk = reflectTypeMap[fd.kind]
 	// find a type in the struct tag

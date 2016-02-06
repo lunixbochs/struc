@@ -137,18 +137,23 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value, options *Options) error {
 			}
 			continue
 		} else {
-			size := length * field.Type.Resolve(options).Size()
-			if size < 8 {
-				buf = tmp[:size]
+			typ := field.Type.Resolve(options)
+			if typ == CustomType {
+				return v.Addr().Interface().(Custom).Unpack(r, length, options)
 			} else {
-				buf = make([]byte, size)
-			}
-			if _, err := io.ReadFull(r, buf); err != nil {
-				return err
-			}
-			err := field.Unpack(buf[:size], v, length, options)
-			if err != nil {
-				return err
+				size := length * field.Type.Resolve(options).Size()
+				if size < 8 {
+					buf = tmp[:size]
+				} else {
+					buf = make([]byte, size)
+				}
+				if _, err := io.ReadFull(r, buf); err != nil {
+					return err
+				}
+				err := field.Unpack(buf[:size], v, length, options)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

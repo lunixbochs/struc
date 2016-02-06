@@ -8,7 +8,8 @@ import (
 type Type int
 
 const (
-	Pad Type = iota
+	Invalid Type = iota
+	Pad
 	Bool
 	Int
 	Int8
@@ -27,6 +28,7 @@ const (
 
 	SizeType
 	OffType
+	CustomType
 )
 
 func (t Type) Resolve(options *Options) Type {
@@ -101,7 +103,9 @@ var typeLookup = map[string]Type{
 	"off_t":  OffType,
 }
 
-var typeNames = map[Type]string{}
+var typeNames = map[Type]string{
+	CustomType: "Custom",
+}
 
 func init() {
 	for name, enum := range typeLookup {

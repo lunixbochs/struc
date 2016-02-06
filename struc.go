@@ -28,7 +28,7 @@ func (o *Options) Validate() error {
 
 var emptyOptions = &Options{}
 
-func prep(data interface{}) (reflect.Value, Packable, error) {
+func prep(data interface{}) (reflect.Value, Packer, error) {
 	value := reflect.ValueOf(data)
 	for value.Kind() == reflect.Ptr {
 		next := value.Elem().Kind()
@@ -46,7 +46,10 @@ func prep(data interface{}) (reflect.Value, Packable, error) {
 		if !value.IsValid() {
 			return reflect.Value{}, nil, fmt.Errorf("Invalid reflect.Value for %+v", data)
 		}
-		return value, &binaryFallback{value, binary.BigEndian}, nil
+		if c, ok := data.(Custom); ok {
+			return value, customFallback{c}, nil
+		}
+		return value, binaryFallback(value), nil
 	}
 }
 
@@ -61,16 +64,16 @@ func PackWithOptions(w io.Writer, data interface{}, options *Options) error {
 	if err := options.Validate(); err != nil {
 		return err
 	}
-	val, fields, err := prep(data)
+	val, packer, err := prep(data)
 	if err != nil {
 		return err
 	}
 	if val.Type().Kind() == reflect.String {
 		val = val.Convert(reflect.TypeOf([]byte{}))
 	}
-	size := fields.Sizeof(val, options)
+	size := packer.Sizeof(val, options)
 	buf := make([]byte, size)
-	if _, err := fields.Pack(buf, val, options); err != nil {
+	if _, err := packer.Pack(buf, val, options); err != nil {
 		return err
 	}
 	_, err = w.Write(buf)
@@ -88,11 +91,11 @@ func UnpackWithOptions(r io.Reader, data interface{}, options *Options) error {
 	if err := options.Validate(); err != nil {
 		return err
 	}
-	val, fields, err := prep(data)
+	val, packer, err := prep(data)
 	if err != nil {
 		return err
 	}
-	return fields.Unpack(r, val, options)
+	return packer.Unpack(r, val, options)
 }
 
 func Sizeof(data interface{}) (int, error) {
@@ -106,9 +109,9 @@ func SizeofWithOptions(data interface{}, options *Options) (int, error) {
 	if err := options.Validate(); err != nil {
 		return 0, err
 	}
-	val, fields, err := prep(data)
+	val, packer, err := prep(data)
 	if err != nil {
 		return 0, err
 	}
-	return fields.Sizeof(val, options), nil
+	return packer.Sizeof(val, options), nil
 }
