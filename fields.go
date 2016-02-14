@@ -78,10 +78,16 @@ func (f Fields) Pack(buf []byte, val reflect.Value, options *Options) (int, erro
 			length := val.FieldByIndex(field.Sizeof).Len()
 			switch field.kind {
 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-				v = reflect.ValueOf(length)
+				// allocating a new int here has fewer side effects (doesn't update the original struct)
+				// but it's a wasteful allocation
+				// the old method might work if we just cast the temporary int/uint to the target type
+				v = reflect.New(v.Type()).Elem()
+				v.SetInt(int64(length))
 			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				ulen := uint64(length)
-				v = reflect.ValueOf(ulen)
+				v = reflect.New(v.Type()).Elem()
+				v.SetUint(uint64(length))
+			default:
+				panic(fmt.Sprintf("sizeof field is not int or uint type: %s, %s", field.Name, v.Type()))
 			}
 		}
 		if n, err := field.Pack(buf[pos:], v, length, options); err != nil {
@@ -139,7 +145,9 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value, options *Options) error {
 		} else {
 			typ := field.Type.Resolve(options)
 			if typ == CustomType {
-				return v.Addr().Interface().(Custom).Unpack(r, length, options)
+				if err := v.Addr().Interface().(Custom).Unpack(r, length, options); err != nil {
+					return err
+				}
 			} else {
 				size := length * field.Type.Resolve(options).Size()
 				if size < 8 {

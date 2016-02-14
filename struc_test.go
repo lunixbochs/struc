@@ -54,6 +54,9 @@ type Example struct {
 
 	NestedSize int      `struc:"sizeof=NestedA"` // 00 00 00 02
 	NestedA    []Nested // [00 00 00 03, 00 00 00 04]
+
+	CustomTypeSize    Int3   `struc:"sizeof=CustomTypeSizeArr"` // 00 00 00 04
+	CustomTypeSizeArr []byte // "ABCD"
 }
 
 var five = 5
@@ -68,6 +71,7 @@ var reference = &Example{
 	4, []byte("5678"),
 	Nested{1}, &Nested{2}, &five,
 	6, []Nested{{3}, {4}, {5}, {6}, {7}, {8}},
+	Int3(4), []byte("ABCD"),
 }
 
 var referenceBytes = []byte{
@@ -95,6 +99,8 @@ var referenceBytes = []byte{
 
 	0, 0, 0, 6, // int32(6)
 	3, 4, 5, 6, 7, 8, // [Nested{3}, ...Nested{8}]
+
+	0, 0, 4, 'A', 'B', 'C', 'D', // Int3(4), []byte("ABCD")
 }
 
 func TestCodec(t *testing.T) {
