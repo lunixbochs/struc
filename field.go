@@ -1,6 +1,7 @@
 package struc
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"math"
@@ -155,14 +156,34 @@ func (f *Field) Pack(buf []byte, val reflect.Value, length int, options *Options
 		return length, nil
 	}
 	if f.Slice {
-		// special case byte slices for performance
-		if !f.Array && typ == Uint8 && f.defType == Uint8 {
-			copy(buf, val.Bytes())
+		// special case strings and byte slices for performance
+		end := val.Len()
+		if !f.Array && typ == Uint8 && (f.defType == Uint8 || f.kind == reflect.String) {
+			var tmp []byte
+			if f.kind == reflect.String {
+				tmp = []byte(val.String())
+			} else {
+				tmp = val.Bytes()
+			}
+			copy(buf, tmp)
+			if end < length {
+				// TODO: allow configuring pad byte?
+				rep := bytes.Repeat([]byte{0}, length-end)
+				copy(buf[end:], rep)
+				return length, nil
+			}
 			return val.Len(), nil
 		}
 		pos := 0
+		var zero reflect.Value
+		if end < length {
+			zero = reflect.Zero(val.Type().Elem())
+		}
 		for i := 0; i < length; i++ {
-			cur := val.Index(i)
+			cur := zero
+			if i < end {
+				cur = val.Index(i)
+			}
 			if n, err := f.packVal(buf[pos:], cur, 1, options); err != nil {
 				return pos, err
 			} else {

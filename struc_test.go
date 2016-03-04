@@ -179,3 +179,19 @@ func TestNilValue(t *testing.T) {
 		t.Fatal("failed to throw error for bad struct value")
 	}
 }
+
+type sliceUnderrun struct {
+	Str string   `struc:"[10]byte"`
+	Arr []uint16 `struc:"[10]uint16"`
+}
+
+func TestSliceUnderrun(t *testing.T) {
+	var buf bytes.Buffer
+	v := sliceUnderrun{
+		Str: "foo",
+		Arr: []uint16{1, 2, 3},
+	}
+	if err := Pack(&buf, &v); err != nil {
+		t.Fatal(err)
+	}
+}
