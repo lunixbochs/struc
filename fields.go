@@ -12,14 +12,18 @@ type Fields []*Field
 
 func (f Fields) SetByteOrder(order binary.ByteOrder) {
 	for _, field := range f {
-		field.Order = order
+		if field != nil {
+			field.Order = order
+		}
 	}
 }
 
 func (f Fields) String() string {
 	fields := make([]string, len(f))
 	for i, field := range f {
-		fields[i] = field.String()
+		if field != nil {
+			fields[i] = field.String()
+		}
 	}
 	return "{" + strings.Join(fields, ", ") + "}"
 }
@@ -30,9 +34,8 @@ func (f Fields) Sizeof(val reflect.Value, options *Options) int {
 	}
 	size := 0
 	for i, field := range f {
-		v := val.Field(i)
-		if v.CanSet() {
-			size += field.Size(v, options)
+		if field != nil {
+			size += field.Size(val.Field(i), options)
 		}
 	}
 	return size
@@ -63,7 +66,7 @@ func (f Fields) Pack(buf []byte, val reflect.Value, options *Options) (int, erro
 	}
 	pos := 0
 	for i, field := range f {
-		if !field.CanSet {
+		if field == nil {
 			continue
 		}
 		v := val.Field(i)
@@ -106,7 +109,7 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value, options *Options) error {
 	var tmp [8]byte
 	var buf []byte
 	for i, field := range f {
-		if !field.CanSet {
+		if field == nil {
 			continue
 		}
 		v := val.Field(i)

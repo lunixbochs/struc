@@ -10,7 +10,6 @@ import (
 
 type Field struct {
 	Name     string
-	CanSet   bool
 	Ptr      bool
 	Index    int
 	Type     Type

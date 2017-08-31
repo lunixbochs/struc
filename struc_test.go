@@ -55,6 +55,8 @@ type Example struct {
 	NestedSize int      `struc:"sizeof=NestedA"` // 00 00 00 02
 	NestedA    []Nested // [00 00 00 03, 00 00 00 04]
 
+	Skip int `struc:"skip"`
+
 	CustomTypeSize    Int3   `struc:"sizeof=CustomTypeSizeArr"` // 00 00 00 04
 	CustomTypeSizeArr []byte // "ABCD"
 }
@@ -71,6 +73,7 @@ var reference = &Example{
 	4, []byte("5678"),
 	Nested{1}, &Nested{2}, &five,
 	6, []Nested{{3}, {4}, {5}, {6}, {7}, {8}},
+	0,
 	Int3(4), []byte("ABCD"),
 }
 
