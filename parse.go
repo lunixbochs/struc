@@ -50,8 +50,8 @@ func parseStrucTag(tag reflect.StructTag) *strucTag {
 
 var typeLenRe = regexp.MustCompile(`^\[(\d*)\]`)
 
-func parseField(f reflect.StructField) (fd *Field, err error) {
-	tag := parseStrucTag(f.Tag)
+func parseField(f reflect.StructField) (fd *Field, tag *strucTag, err error) {
+	tag = parseStrucTag(f.Tag)
 	var ok bool
 	fd = &Field{
 		Name:  f.Name,
@@ -128,7 +128,10 @@ func parseFieldsLocked(v reflect.Value) (Fields, error) {
 	fields := make(Fields, v.NumField())
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		f, err := parseField(field)
+		f, tag, err := parseField(field)
+		if tag.Skip {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -136,10 +139,6 @@ func parseFieldsLocked(v reflect.Value) (Fields, error) {
 			continue
 		}
 		f.Index = i
-		tag := parseStrucTag(field.Tag)
-		if tag.Skip {
-			continue
-		}
 		if tag.Sizeof != "" {
 			target, ok := t.FieldByName(tag.Sizeof)
 			if !ok {
