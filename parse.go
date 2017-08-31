@@ -13,8 +13,6 @@ import (
 
 // struc:"int32,big,sizeof=Data"
 
-var tagWordsRe = regexp.MustCompile(`(\[|\b)[^"]+\b+$`)
-
 type strucTag struct {
 	Type   string
 	Order  binary.ByteOrder
