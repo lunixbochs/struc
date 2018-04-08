@@ -3,8 +3,11 @@ package struc
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/kr/pretty"
 )
 
 type Nested struct {
@@ -138,6 +141,7 @@ func TestCodec(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(reference, out) {
+		fmt.Println(pretty.Diff(out, reference))
 		t.Fatal("encode/decode failed")
 	}
 }
@@ -148,6 +152,7 @@ func TestEncode(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(buf.Bytes(), referenceBytes) {
+		fmt.Println(pretty.Diff(buf.Bytes(), referenceBytes))
 		t.Fatal("encode failed")
 	}
 }
@@ -159,6 +164,7 @@ func TestDecode(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(reference, out) {
+		fmt.Println(pretty.Diff(out, reference))
 		t.Fatal("decode failed")
 	}
 }
@@ -169,7 +175,7 @@ func TestSizeof(t *testing.T) {
 		t.Fatal(err)
 	}
 	if size != len(referenceBytes) {
-		t.Fatal("sizeof failed")
+		t.Fatalf("sizeof failed; expected %d, got %d", len(referenceBytes), size)
 	}
 }
 
