@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
-
-	"github.com/kr/pretty"
 )
 
 type Nested struct {
@@ -146,7 +144,7 @@ func TestCodec(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(reference, out) {
-		fmt.Println(pretty.Diff(out, reference))
+		fmt.Printf("got: %#v\nwant: %#v\n", out, reference)
 		t.Fatal("encode/decode failed")
 	}
 }
@@ -157,7 +155,7 @@ func TestEncode(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(buf.Bytes(), referenceBytes) {
-		fmt.Println(pretty.Diff(buf.Bytes(), referenceBytes))
+		fmt.Printf("got: %#v\nwant: %#v\n", buf.Bytes(), referenceBytes)
 		t.Fatal("encode failed")
 	}
 }
@@ -169,7 +167,7 @@ func TestDecode(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(reference, out) {
-		fmt.Println(pretty.Diff(out, reference))
+		fmt.Printf("got: %#v\nwant: %#v\n", out, reference)
 		t.Fatal("decode failed")
 	}
 }
