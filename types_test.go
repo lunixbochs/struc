@@ -38,7 +38,7 @@ func TestSizeOffTypes(t *testing.T) {
 		0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2,
 	}
 	if !bytes.Equal(reference, buf.Bytes()) {
-		t.Errorf("reference != bytes: %v", reference, buf.Bytes())
+		t.Errorf("reference: %v != bytes: %v", reference, buf.Bytes())
 	}
 	reader := bytes.NewReader(buf.Bytes())
 	for _, b := range bits {
