@@ -3,6 +3,7 @@ package struc
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -37,6 +38,11 @@ type Example struct {
 	Byte4  [4]byte // "efgh"
 	Float1 float32 // 41 a0 00 00
 	Float2 float64 // 41 35 00 00 00 00 00 00
+
+	I32f2 int64 `struc:"int32"`  // ff ff ff ff
+	U32f2 int64 `struc:"uint32"` // ff ff ff ff
+
+	I32f3 int32 `struc:"int64"` // ff ff ff ff ff ff ff ff
 
 	Size int    `struc:"sizeof=Str,little"` // 0a 00 00 00
 	Str  string `struc:"[]byte"`            // "ijklmnopqr"
@@ -75,6 +81,9 @@ var reference = &Example{
 	1, 2, 3, 4, 5, 6, 7, 8, 0, []byte{'a', 'b', 'c', 'd'},
 	9, 10, 11, 12, 13, 14, 15, 16, true, false, [4]byte{'e', 'f', 'g', 'h'},
 	20, 21,
+	-1,
+	4294967295,
+	-1,
 	10, "ijklmnopqr", "stuv",
 	4, "1234",
 	4, []byte("5678"),
@@ -99,6 +108,11 @@ var referenceBytes = []byte{
 	'e', 'f', 'g', 'h', // real [4]byte
 	65, 160, 0, 0, // real float32(20)
 	64, 53, 0, 0, 0, 0, 0, 0, // real float64(21)
+
+	255, 255, 255, 255, // fake int32(-1)
+	255, 255, 255, 255, // fake uint32(4294967295)
+
+	255, 255, 255, 255, 255, 255, 255, 255, // fake int64(-1)
 
 	10, 0, 0, 0, // little-endian int32(10) sizeof=Str
 	'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', // Str
@@ -130,6 +144,7 @@ func TestCodec(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(reference, out) {
+		fmt.Printf("got: %#v\nwant: %#v\n", out, reference)
 		t.Fatal("encode/decode failed")
 	}
 }
@@ -140,6 +155,7 @@ func TestEncode(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(buf.Bytes(), referenceBytes) {
+		fmt.Printf("got: %#v\nwant: %#v\n", buf.Bytes(), referenceBytes)
 		t.Fatal("encode failed")
 	}
 }
@@ -151,6 +167,7 @@ func TestDecode(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(reference, out) {
+		fmt.Printf("got: %#v\nwant: %#v\n", out, reference)
 		t.Fatal("decode failed")
 	}
 }
@@ -161,7 +178,7 @@ func TestSizeof(t *testing.T) {
 		t.Fatal(err)
 	}
 	if size != len(referenceBytes) {
-		t.Fatal("sizeof failed")
+		t.Fatalf("sizeof failed; expected %d, got %d", len(referenceBytes), size)
 	}
 }
 
