@@ -44,6 +44,8 @@ type Example struct {
 	I32f2 int64 `struc:"int32"`  // ff ff ff ff
 	U32f2 int64 `struc:"uint32"` // ff ff ff ff
 
+	I32f3 int32 `struc:"int64"` // ff ff ff ff ff ff ff ff
+
 	Size int    `struc:"sizeof=Str,little"` // 0a 00 00 00
 	Str  string `struc:"[]byte"`            // "ijklmnopqr"
 	Strb string `struc:"[4]byte"`           // "stuv"
@@ -83,6 +85,7 @@ var reference = &Example{
 	20, 21,
 	-1,
 	4294967295,
+	-1,
 	10, "ijklmnopqr", "stuv",
 	4, "1234",
 	4, []byte("5678"),
@@ -110,6 +113,8 @@ var referenceBytes = []byte{
 
 	255, 255, 255, 255, // fake int32(-1)
 	255, 255, 255, 255, // fake uint32(4294967295)
+
+	255, 255, 255, 255, 255, 255, 255, 255, // fake int64(-1)
 
 	10, 0, 0, 0, // little-endian int32(10) sizeof=Str
 	'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', // Str
