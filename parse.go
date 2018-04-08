@@ -11,13 +11,14 @@ import (
 	"sync"
 )
 
-// struc:"int32,big,sizeof=Data"
+// struc:"int32,big,sizeof=Data,skip,sizefrom=Len"
 
 type strucTag struct {
-	Type   string
-	Order  binary.ByteOrder
-	Sizeof string
-	Skip   bool
+	Type     string
+	Order    binary.ByteOrder
+	Sizeof   string
+	Skip     bool
+	Sizefrom string
 }
 
 func parseStrucTag(tag reflect.StructTag) *strucTag {
@@ -35,6 +36,9 @@ func parseStrucTag(tag reflect.StructTag) *strucTag {
 		if strings.HasPrefix(s, "sizeof=") {
 			tmp := strings.SplitN(s, "=", 2)
 			t.Sizeof = tmp[1]
+		} else if strings.HasPrefix(s, "sizefrom=") {
+			tmp := strings.SplitN(s, "=", 2)
+			t.Sizefrom = tmp[1]
 		} else if s == "big" {
 			t.Order = binary.BigEndian
 		} else if s == "little" {
@@ -149,6 +153,13 @@ func parseFieldsLocked(v reflect.Value) (Fields, error) {
 		}
 		if sizefrom, ok := sizeofMap[field.Name]; ok {
 			f.Sizefrom = sizefrom
+		}
+		if tag.Sizefrom != "" {
+			source, ok := t.FieldByName(tag.Sizefrom)
+			if !ok {
+				return nil, fmt.Errorf("struc: `sizefrom=%s` field does not exist", tag.Sizefrom)
+			}
+			f.Sizefrom = source.Index
 		}
 		if f.Len == -1 && f.Sizefrom == nil {
 			return nil, fmt.Errorf("struc: field `%s` is a slice with no length or sizeof field", field.Name)

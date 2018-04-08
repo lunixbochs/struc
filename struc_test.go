@@ -48,6 +48,13 @@ type Example struct {
 	Size3 int    `struc:"uint8,sizeof=Bstr"` // 04
 	Bstr  []byte // "5678"
 
+	Size4 int    `struc:"little"`                // 07 00 00 00
+	Str4a string `struc:"[]byte,sizefrom=Size4"` // "ijklmno"
+	Str4b string `struc:"[]byte,sizefrom=Size4"` // "pqrstuv"
+
+	Size5 int    `struc:"uint8"`          // 04
+	Bstr2 []byte `struc:"sizefrom=Size5"` // "5678"
+
 	Nested  Nested  // 00 00 00 01
 	NestedP *Nested // 00 00 00 02
 	TestP64 *int    `struc:"int64"` // 00 00 00 05
@@ -70,6 +77,8 @@ var reference = &Example{
 	20, 21,
 	10, "ijklmnopqr", "stuv",
 	4, "1234",
+	4, []byte("5678"),
+	7, "ijklmno", "pqrstuv",
 	4, []byte("5678"),
 	Nested{1}, &Nested{2}, &five,
 	6, []Nested{{3}, {4}, {5}, {6}, {7}, {8}},
@@ -95,6 +104,11 @@ var referenceBytes = []byte{
 	'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', // Str
 	's', 't', 'u', 'v', // fake string([4]byte)
 	04, '1', '2', '3', '4', // real string
+	04, '5', '6', '7', '8', // fake []byte(string)
+
+	7, 0, 0, 0, // little-endian int32(7)
+	'i', 'j', 'k', 'l', 'm', 'n', 'o', // Str4a sizefrom=Size4
+	'p', 'q', 'r', 's', 't', 'u', 'v', // Str4b sizefrom=Size4
 	04, '5', '6', '7', '8', // fake []byte(string)
 
 	1, 2, // Nested{1}, Nested{2}
