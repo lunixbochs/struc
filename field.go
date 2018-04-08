@@ -219,16 +219,36 @@ func (f *Field) unpackVal(buf []byte, val reflect.Value, length int, options *Op
 		default:
 			return fmt.Errorf("struc: refusing to unpack float into field %s of type %s", f.Name, f.kind.String())
 		}
-	case Bool, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64:
+	case Int8, Int16, Int32, Int64:
+		var n int64
+		switch typ {
+		case Int8:
+			n = int64(int8(buf[0]))
+		case Int16:
+			n = int64(int16(order.Uint16(buf)))
+		case Int32:
+			n = int64(int32(order.Uint32(buf)))
+		case Int64:
+			n = int64(order.Uint64(buf))
+		}
+		switch f.kind {
+		case reflect.Bool:
+			val.SetBool(n != 0)
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			val.SetInt(int64(n))
+		default:
+			val.SetUint(uint64(n))
+		}
+	case Bool, Uint8, Uint16, Uint32, Uint64:
 		var n uint64
 		switch typ {
-		case Bool, Int8, Uint8:
+		case Bool, Uint8:
 			n = uint64(buf[0])
-		case Int16, Uint16:
+		case Uint16:
 			n = uint64(order.Uint16(buf))
-		case Int32, Uint32:
+		case Uint32:
 			n = uint64(order.Uint32(buf))
-		case Int64, Uint64:
+		case Uint64:
 			n = uint64(order.Uint64(buf))
 		}
 		switch f.kind {
