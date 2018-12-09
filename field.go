@@ -26,6 +26,9 @@ type Field struct {
 
 func (f *Field) String() string {
 	var out string
+	if f.Type == Ignore {
+		return fmt.Sprintf("{type: Ignore, len: %d}", 0)
+	}
 	if f.Type == Pad {
 		return fmt.Sprintf("{type: Pad, len: %d}", f.Len)
 	} else {
@@ -58,6 +61,8 @@ func (f *Field) Size(val reflect.Value, options *Options) int {
 		}
 	} else if typ == Pad {
 		size = f.Len
+	} else if typ == Ignore {
+		size = 0
 	} else if f.Slice || f.kind == reflect.String {
 		length := val.Len()
 		if f.Len > 1 {
@@ -153,6 +158,9 @@ func (f *Field) Pack(buf []byte, val reflect.Value, length int, options *Options
 			buf[i] = 0
 		}
 		return length, nil
+	}
+	if typ == Ignore {
+		return 0, nil
 	}
 	if f.Slice {
 		// special case strings and byte slices for performance
@@ -255,6 +263,9 @@ func (f *Field) unpackVal(buf []byte, val reflect.Value, length int, options *Op
 
 func (f *Field) Unpack(buf []byte, val reflect.Value, length int, options *Options) error {
 	typ := f.Type.Resolve(options)
+	if typ == Ignore {
+		return nil
+	}
 	if typ == Pad || f.kind == reflect.String {
 		if typ == Pad {
 			return nil
