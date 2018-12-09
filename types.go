@@ -9,6 +9,7 @@ type Type int
 
 const (
 	Invalid Type = iota
+	Ignore
 	Pad
 	Bool
 	Int
@@ -71,6 +72,8 @@ func (t Type) Size() int {
 	switch t {
 	case SizeType, OffType:
 		panic("Size_t/Off_t types must be converted to another type using options.PtrSize")
+	case Ignore:
+		return 0
 	case Pad, String, Int8, Uint8, Bool:
 		return 1
 	case Int16, Uint16:
@@ -85,6 +88,7 @@ func (t Type) Size() int {
 }
 
 var typeLookup = map[string]Type{
+	"ignore:" Ignore,
 	"pad":     Pad,
 	"bool":    Bool,
 	"byte":    Uint8,
