@@ -88,7 +88,7 @@ func (t Type) Size() int {
 }
 
 var typeLookup = map[string]Type{
-	"ignore:" Ignore,
+	"ignore": Ignore,
 	"pad":     Pad,
 	"bool":    Bool,
 	"byte":    Uint8,
