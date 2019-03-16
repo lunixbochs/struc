@@ -95,3 +95,87 @@ func TestCustomSliceStruct(t *testing.T) {
 	}
 }
 */
+
+// Slice of uint8, stored in a zero terminated list.
+type IntSlice []uint8
+
+func (ia *IntSlice) Pack(p []byte, opt *Options) (int, error) {
+	for i, value := range *ia {
+		p[i] = value
+	}
+
+	return len(*ia) + 1, nil
+}
+
+func (ia *IntSlice) Unpack(r io.Reader, length int, opt *Options) error {
+	for {
+		var value uint8
+		if err := binary.Read(r, binary.LittleEndian, &value); err != nil {
+			if err == io.EOF {
+				return io.ErrUnexpectedEOF
+			}
+			return err
+		}
+		*ia = append(*ia, value)
+		if value == 0 {
+			break
+		}
+	}
+	return nil
+}
+
+func (ia *IntSlice) Size(opt *Options) int {
+	return len(*ia) + 1
+}
+
+func (ia *IntSlice) String() string {
+	panic("not implemented")
+}
+
+func TestCustomLength(t *testing.T) {
+	var buf bytes.Buffer
+	i := make(IntSlice, 0)
+	i = append(i, 128)
+	i = append(i, 64)
+	i = append(i, 32)
+
+	if err := Pack(&buf, &i); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(buf.Bytes(), []byte{128, 64, 32, 0}) {
+		t.Fatal("error packing custom int array")
+	}
+	var i2 IntSlice
+	if err := Unpack(&buf, &i2); err != nil {
+		t.Fatal(err)
+	}
+	if i2[0] != 128 {
+		t.Fatal("error unpacking custom int array")
+	}
+}
+
+type IntSliceStruct struct {
+	I IntSlice
+	N uint8 // A field after to ensure the length is correct.
+}
+
+func TestCustomLengthStruct(t *testing.T) {
+	var buf bytes.Buffer
+	i := IntSliceStruct{
+		I: IntSlice{128, 64, 32},
+		N: 192,
+	}
+	if err := Pack(&buf, &i); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(buf.Bytes(), []byte{128, 64, 32, 0, 192}) {
+		t.Fatal("error packing custom int array struct")
+	}
+	var i2 IntSliceStruct
+	if err := Unpack(&buf, &i2); err != nil {
+		t.Fatal(err)
+	}
+	if i2.I[0] != 128 || i2.N != 192 {
+		t.Fatal("error unpacking custom int array struct")
+	}
+}

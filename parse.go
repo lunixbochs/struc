@@ -81,6 +81,19 @@ func parseField(f reflect.StructField) (fd *Field, tag *strucTag, err error) {
 	// check for custom types
 	tmp := reflect.New(f.Type)
 	if _, ok := tmp.Interface().(Custom); ok {
+		// Custom types containing slices handle their own elem processing, but
+		// slices of a custom type do not.
+		//
+		//    type IntSlice []int
+		//    type MyInt int
+		//    type Fields struct {
+		//        intsA IntSlice // Handles own, fd.Slice = false
+		//        intsB []MyInt  // Doesn't handle own, fd.Slice = true
+		//    }
+		// FIXME: Is there a better way than string processing to determine this?
+		if tmp.String()[:2] != "[]" {
+			fd.Slice = false
+		}
 		fd.Type = CustomType
 		return
 	}
@@ -161,7 +174,7 @@ func parseFieldsLocked(v reflect.Value) (Fields, error) {
 			}
 			f.Sizefrom = source.Index
 		}
-		if f.Len == -1 && f.Sizefrom == nil {
+		if f.Len == -1 && f.Sizefrom == nil && f.Type != CustomType {
 			return nil, fmt.Errorf("struc: field `%s` is a slice with no length or sizeof field", field.Name)
 		}
 		// recurse into nested structs
