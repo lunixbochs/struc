@@ -42,6 +42,18 @@ func prep(data interface{}) (reflect.Value, Packer, error) {
 	case reflect.Struct:
 		fields, err := parseFields(value)
 		return value, fields, err
+	case reflect.Array:
+		panic(fmt.Sprint("pack of array is not supported: ", value.Type()))
+	case reflect.Ptr:
+		if _, ok := value.Interface().(Custom); !ok {
+			if value.Elem().Kind() == reflect.Array {
+				panic(fmt.Sprint("pack of array pointer is not supported: ", value.Type()))
+			}
+			if value.Elem().Kind() == reflect.Slice {
+				panic(fmt.Sprint("pack of slice pointer is not supported: ", value.Type()))
+			}
+		}
+		fallthrough
 	default:
 		if !value.IsValid() {
 			return reflect.Value{}, nil, fmt.Errorf("Invalid reflect.Value for %+v", data)

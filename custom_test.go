@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"io"
 	"reflect"
+	"runtime/debug"
 	"strconv"
 	"testing"
 )
@@ -176,6 +177,7 @@ func TestCustomTypes(t *testing.T) {
 		skip        bool // Skip the test, because it fails.
 		// Switch to expectFail when possible:
 		// https://github.com/golang/go/issues/25951
+		expectPanic bool // Unimplemented features should panic.
 	}{
 		// Start tests with unimplemented non-custom types.
 		{
@@ -183,14 +185,14 @@ func TestCustomTypes(t *testing.T) {
 			packObj:     [2]uint8{32, 64},
 			emptyObj:    [2]uint8{0, 0},
 			expectBytes: []byte{32, 64},
-			skip:        true, // Not implemented.
+			expectPanic: true, // Not implemented.
 		},
 		{
 			name:        "PointerToArrayOfUInt8",
 			packObj:     &[2]uint8{32, 64},
 			emptyObj:    &[2]uint8{0, 0},
 			expectBytes: []byte{32, 64},
-			skip:        true, // Not implemented.
+			expectPanic: true, // Not implemented.
 		},
 		{
 			name:        "ArrayOfUInt8Struct",
@@ -221,21 +223,21 @@ func TestCustomTypes(t *testing.T) {
 			packObj:     [2]Int3{3, 4},
 			emptyObj:    [2]Int3{},
 			expectBytes: []byte{0, 0, 3, 0, 0, 4},
-			skip:        true, // Not implemented.
+			expectPanic: true, // Not implemented.
 		},
 		{
 			name:        "PointerToArrayOfCustomType",
 			packObj:     &[2]Int3{3, 4},
 			emptyObj:    &[2]Int3{},
 			expectBytes: []byte{0, 0, 3, 0, 0, 4},
-			skip:        true, // Not implemented.
+			expectPanic: true, // Not implemented.
 		},
 		{
 			name:        "ArrayOfCustomTypeStruct",
 			packObj:     &ArrayInt3Struct{[2]Int3{3, 4}},
 			emptyObj:    &ArrayInt3Struct{},
 			expectBytes: []byte{0, 0, 3, 0, 0, 4},
-			skip:        true, // Not implemented.
+			expectPanic: true, // Not implemented.
 		},
 		{
 			name:        "CustomTypeOfArrayOfUInt8",
@@ -248,7 +250,7 @@ func TestCustomTypes(t *testing.T) {
 			packObj:     &DoubleUInt8Struct{I: DoubleUInt8{32, 64}},
 			emptyObj:    &DoubleUInt8Struct{},
 			expectBytes: []byte{32, 64},
-			skip:        true, // Not implemented.
+			expectPanic: true, // Not implemented.
 		},
 		{
 			name:        "CustomTypeOfArrayOfCustomType",
@@ -261,7 +263,7 @@ func TestCustomTypes(t *testing.T) {
 			packObj:     &DoubleInt3Struct{D: DoubleInt3{Int3(128), Int3(256)}},
 			emptyObj:    &DoubleInt3Struct{},
 			expectBytes: []byte{0, 0, 128, 0, 1, 0},
-			skip:        true, // Not implemented.
+			expectPanic: true, // Not implemented.
 		},
 		{
 			name:        "CustomTypeOfSliceOfUInt8",
@@ -280,7 +282,7 @@ func TestCustomTypes(t *testing.T) {
 			packObj:     &SliceUInt8Struct{I: SliceUInt8{128, 64, 32}, N: 192},
 			emptyObj:    &SliceUInt8Struct{},
 			expectBytes: []byte{128, 64, 32, 0, 192},
-			skip:        true, // Not implemented.
+			expectPanic: true, // Not implemented.
 		},
 	}
 
@@ -289,8 +291,16 @@ func TestCustomTypes(t *testing.T) {
 		t.Log("RUN ", test.name)
 		runner := func(t *testing.T) {
 			defer func() {
-				if r := recover(); r != nil {
-					t.Log("unexpected panic:", r)
+				if r := recover(); r == nil {
+					if test.expectPanic {
+						t.Fatal("expected panic, but did not panic")
+					}
+				} else {
+					if !test.expectPanic {
+						debug.PrintStack()
+						t.Fatal("unexpected panic:", r)
+					}
+					t.Log("expected panic:", r)
 				}
 			}()
 			if test.skip {
