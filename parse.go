@@ -78,22 +78,30 @@ func parseField(f reflect.StructField) (fd *Field, tag *strucTag, err error) {
 		fd.Ptr = true
 		fd.kind = f.Type.Elem().Kind()
 	}
-	// check for custom types
+	// Custom types containing slices handle their own elem processing, but
+	// slices of a custom type do not.
+	//
+	//    type IntSlice []int
+	//    type MyInt int
+	//    type Fields struct {
+	//        intsA IntSlice // Handles own element process
+	//        intsB []MyInt  // Doesn't handle own element processing
+	//    }
+
+	// Disallow slice of custom struct
+	if fd.Slice || fd.Array {
+		abstract := reflect.TypeOf((*Custom)(nil)).Elem()
+		if reflect.PtrTo(f.Type.Elem()).Implements(abstract) {
+			// TODO:  slices/arrays of custom types don't work yet
+			panic(fmt.Sprint("slice of custom struct is not supported:", f.Type.String()))
+		}
+	}
+	// Check custom types, allow custom struct containing a slice/array to process
+	// their own elements.
 	tmp := reflect.New(f.Type)
 	if _, ok := tmp.Interface().(Custom); ok {
-		// Custom types containing slices handle their own elem processing, but
-		// slices of a custom type do not.
-		//
-		//    type IntSlice []int
-		//    type MyInt int
-		//    type Fields struct {
-		//        intsA IntSlice // Handles own, fd.Slice = false
-		//        intsB []MyInt  // Doesn't handle own, fd.Slice = true
-		//    }
-		// FIXME: Is there a better way than string processing to determine this?
-		if tmp.String()[:2] != "[]" {
-			fd.Slice = false
-		}
+		fd.Slice = false
+		fd.Array = false
 		fd.Type = CustomType
 		return
 	}

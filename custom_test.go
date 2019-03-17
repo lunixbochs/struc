@@ -72,21 +72,26 @@ func TestCustomStruct(t *testing.T) {
 }
 
 // TODO: slices of custom types don't work yet
-/*
-type Int3SliceStruct struct {
+type ArrayInt3Struct struct {
 	I [2]Int3
 }
 
-func TestCustomSliceStruct(t *testing.T) {
+func TestArrayOfCustomStructPanic(t *testing.T) {
+	// Expect panic.
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("did not panic")
+		}
+	}()
 	var buf bytes.Buffer
-	i := Int3SliceStruct{[2]Int3{3, 4}}
+	i := ArrayInt3Struct{[2]Int3{3, 4}}
 	if err := Pack(&buf, &i); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(buf.Bytes(), []byte{0, 0, 3}) {
 		t.Fatal("error packing custom int struct")
 	}
-	var i2 Int3SliceStruct
+	var i2 ArrayInt3Struct
 	if err := Unpack(&buf, &i2); err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +99,6 @@ func TestCustomSliceStruct(t *testing.T) {
 		t.Fatal("error unpacking custom int struct")
 	}
 }
-*/
 
 // Slice of uint8, stored in a zero terminated list.
 type IntSlice []uint8
