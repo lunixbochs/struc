@@ -199,7 +199,9 @@ func TestCustomTypes(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		t.Run(test.name, func(t *testing.T) {
+		// TODO: Switch to t.Run() when Go 1.7 is the minimum supported version.
+		t.Log("RUN ", test.name)
+		runner := func(t *testing.T) {
 			defer func() {
 				if r := recover(); r == nil {
 					if test.expectPanic {
@@ -220,6 +222,7 @@ func TestCustomTypes(t *testing.T) {
 			if !reflect.DeepEqual(test.packObj, test.emptyObj) {
 				t.Fatal("error unpacking, expect:", test.packObj, "found:", test.emptyObj)
 			}
-		})
+		}
+		runner(t)
 	}
 }
