@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"reflect"
 	"strconv"
 	"testing"
 )
@@ -31,79 +32,61 @@ func (i *Int3) String() string {
 	return strconv.FormatUint(uint64(*i), 10)
 }
 
-func TestCustom(t *testing.T) {
-	var buf bytes.Buffer
-	var i Int3 = 3
-	if err := Pack(&buf, &i); err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(buf.Bytes(), []byte{0, 0, 3}) {
-		t.Fatal("error packing custom int")
-	}
-	var i2 Int3
-	if err := Unpack(&buf, &i2); err != nil {
-		t.Fatal(err)
-	}
-	if i2 != 3 {
-		t.Fatal("error unpacking custom int")
-	}
+// newInt3 returns a pointer to an Int3
+func newInt3(in int) *Int3 {
+	i := Int3(in)
+	return &i
 }
 
 type Int3Struct struct {
 	I Int3
 }
 
-func TestCustomStruct(t *testing.T) {
-	var buf bytes.Buffer
-	i := Int3Struct{3}
-	if err := Pack(&buf, &i); err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(buf.Bytes(), []byte{0, 0, 3}) {
-		t.Fatal("error packing custom int struct")
-	}
-	var i2 Int3Struct
-	if err := Unpack(&buf, &i2); err != nil {
-		t.Fatal(err)
-	}
-	if i2.I != 3 {
-		t.Fatal("error unpacking custom int struct")
-	}
-}
-
-// TODO: slices of custom types don't work yet
+// TODO: slices/arrays of custom types don't work yet
 type ArrayInt3Struct struct {
 	I [2]Int3
 }
 
-func TestArrayOfCustomStructPanic(t *testing.T) {
-	// Expect panic.
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("did not panic")
+type DoubleUInt8 [2]uint8
+
+func (di *DoubleUInt8) Pack(p []byte, opt *Options) (int, error) {
+	for i, value := range *di {
+		p[i] = value
+	}
+
+	return 2, nil
+}
+
+func (di *DoubleUInt8) Unpack(r io.Reader, length int, opt *Options) error {
+	for i := 0; i < 2; i++ {
+		var value uint8
+		if err := binary.Read(r, binary.LittleEndian, &value); err != nil {
+			if err == io.EOF {
+				return io.ErrUnexpectedEOF
+			}
+			return err
 		}
-	}()
-	var buf bytes.Buffer
-	i := ArrayInt3Struct{[2]Int3{3, 4}}
-	if err := Pack(&buf, &i); err != nil {
-		t.Fatal(err)
+		di[i] = value
 	}
-	if !bytes.Equal(buf.Bytes(), []byte{0, 0, 3}) {
-		t.Fatal("error packing custom int struct")
-	}
-	var i2 ArrayInt3Struct
-	if err := Unpack(&buf, &i2); err != nil {
-		t.Fatal(err)
-	}
-	if i2.I[0] != 3 && i2.I[1] != 4 {
-		t.Fatal("error unpacking custom int struct")
-	}
+	return nil
+}
+
+func (di *DoubleUInt8) Size(opt *Options) int {
+	return 2
+}
+
+func (di *DoubleUInt8) String() string {
+	panic("not implemented")
+}
+
+type DoubleUInt8Struct struct {
+	I DoubleUInt8
 }
 
 // Slice of uint8, stored in a zero terminated list.
-type IntSlice []uint8
+type SliceUInt8 []uint8
 
-func (ia *IntSlice) Pack(p []byte, opt *Options) (int, error) {
+func (ia *SliceUInt8) Pack(p []byte, opt *Options) (int, error) {
 	for i, value := range *ia {
 		p[i] = value
 	}
@@ -111,7 +94,7 @@ func (ia *IntSlice) Pack(p []byte, opt *Options) (int, error) {
 	return len(*ia) + 1, nil
 }
 
-func (ia *IntSlice) Unpack(r io.Reader, length int, opt *Options) error {
+func (ia *SliceUInt8) Unpack(r io.Reader, length int, opt *Options) error {
 	for {
 		var value uint8
 		if err := binary.Read(r, binary.LittleEndian, &value); err != nil {
@@ -120,66 +103,123 @@ func (ia *IntSlice) Unpack(r io.Reader, length int, opt *Options) error {
 			}
 			return err
 		}
-		*ia = append(*ia, value)
 		if value == 0 {
 			break
 		}
+		*ia = append(*ia, value)
 	}
 	return nil
 }
 
-func (ia *IntSlice) Size(opt *Options) int {
+func (ia *SliceUInt8) Size(opt *Options) int {
 	return len(*ia) + 1
 }
 
-func (ia *IntSlice) String() string {
+func (ia *SliceUInt8) String() string {
 	panic("not implemented")
 }
 
-func TestCustomLength(t *testing.T) {
-	var buf bytes.Buffer
-	i := make(IntSlice, 0)
-	i = append(i, 128)
-	i = append(i, 64)
-	i = append(i, 32)
-
-	if err := Pack(&buf, &i); err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(buf.Bytes(), []byte{128, 64, 32, 0}) {
-		t.Fatal("error packing custom int array")
-	}
-	var i2 IntSlice
-	if err := Unpack(&buf, &i2); err != nil {
-		t.Fatal(err)
-	}
-	if i2[0] != 128 {
-		t.Fatal("error unpacking custom int array")
-	}
-}
-
-type IntSliceStruct struct {
-	I IntSlice
+type SliceUInt8Struct struct {
+	I SliceUInt8
 	N uint8 // A field after to ensure the length is correct.
 }
 
-func TestCustomLengthStruct(t *testing.T) {
-	var buf bytes.Buffer
-	i := IntSliceStruct{
-		I: IntSlice{128, 64, 32},
-		N: 192,
+func TestCustomTypes(t *testing.T) {
+	testCases := []struct {
+		name        string
+		packObj     interface{}
+		emptyObj    interface{}
+		expectBytes []byte
+		expectPanic bool // True for unimplemented features
+	}{
+		{
+			name:        "CustomType",
+			packObj:     newInt3(3),
+			emptyObj:    newInt3(0),
+			expectBytes: []byte{0, 0, 3},
+		},
+		{
+			name:        "CustomType-Big",
+			packObj:     newInt3(4000),
+			emptyObj:    newInt3(0),
+			expectBytes: []byte{0, 15, 160},
+		},
+		{
+			name:        "CustomTypeStruct",
+			packObj:     &Int3Struct{3},
+			emptyObj:    &Int3Struct{},
+			expectBytes: []byte{0, 0, 3},
+		},
+		{
+			// Test is wrong, but expectFail() is not available:
+			// https://github.com/golang/go/issues/25951
+			//
+			name:        "ArrayOfCustomType",
+			packObj:     &[2]Int3{3, 4},
+			emptyObj:    &[2]Int3{},
+			expectBytes: []byte{0, 0, 0, 3, 0, 0, 0, 4}, // FIXME: INCORRECT Should panic.
+		},
+		{
+			name:        "ArrayOfCustomTypeStruct",
+			packObj:     &ArrayInt3Struct{[2]Int3{3, 4}},
+			emptyObj:    &ArrayInt3Struct{},
+			expectBytes: []byte{0, 0, 3, 0, 0, 4},
+			expectPanic: true,
+		},
+		{
+			name:        "CustomTypeOfArrayOfUInt8",
+			packObj:     &DoubleUInt8{32, 64},
+			emptyObj:    &DoubleUInt8{},
+			expectBytes: []byte{32, 64},
+		},
+		{
+			name:        "CustomTypeOfArrayOfUInt8Struct",
+			packObj:     &DoubleUInt8Struct{I: DoubleUInt8{32, 64}},
+			emptyObj:    &DoubleUInt8Struct{},
+			expectBytes: []byte{32, 64},
+		},
+		{
+			name:        "CustomTypeOfSliceOfUInt8",
+			packObj:     &SliceUInt8{128, 64, 32},
+			emptyObj:    &SliceUInt8{},
+			expectBytes: []byte{128, 64, 32, 0},
+		},
+		{
+			name:        "CustomTypeOfSliceOfUInt8-Empty",
+			packObj:     &SliceUInt8{},
+			emptyObj:    &SliceUInt8{},
+			expectBytes: []byte{0},
+		},
+		{
+			name:        "CustomTypeOfSliceOfUInt8Struct",
+			packObj:     &SliceUInt8Struct{I: SliceUInt8{128, 64, 32}, N: 192},
+			emptyObj:    &SliceUInt8Struct{},
+			expectBytes: []byte{128, 64, 32, 0, 192},
+		},
 	}
-	if err := Pack(&buf, &i); err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(buf.Bytes(), []byte{128, 64, 32, 0, 192}) {
-		t.Fatal("error packing custom int array struct")
-	}
-	var i2 IntSliceStruct
-	if err := Unpack(&buf, &i2); err != nil {
-		t.Fatal(err)
-	}
-	if i2.I[0] != 128 || i2.N != 192 {
-		t.Fatal("error unpacking custom int array struct")
+
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r == nil {
+					if test.expectPanic {
+						t.Errorf("expected panic, but not panic")
+					}
+				}
+			}()
+			var buf bytes.Buffer
+			if err := Pack(&buf, test.packObj); err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(buf.Bytes(), test.expectBytes) {
+				t.Fatal("error packing, expect:", test.expectBytes, "found:", buf.Bytes())
+			}
+			if err := Unpack(&buf, test.emptyObj); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(test.packObj, test.emptyObj) {
+				t.Fatal("error unpacking, expect:", test.packObj, "found:", test.emptyObj)
+			}
+		})
 	}
 }
