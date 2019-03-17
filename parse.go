@@ -53,6 +53,7 @@ func parseStrucTag(tag reflect.StructTag) *strucTag {
 }
 
 var typeLenRe = regexp.MustCompile(`^\[(\d*)\]`)
+var customInterfaceType = reflect.TypeOf((*Custom)(nil)).Elem()
 
 func parseField(f reflect.StructField) (fd *Field, tag *strucTag, err error) {
 	tag = parseStrucTag(f.Tag)
@@ -79,8 +80,9 @@ func parseField(f reflect.StructField) (fd *Field, tag *strucTag, err error) {
 		fd.kind = f.Type.Elem().Kind()
 	}
 	// check for custom types
-	tmp := reflect.New(f.Type)
-	if _, ok := tmp.Interface().(Custom); ok {
+	if reflect.PtrTo(f.Type).Implements(customInterfaceType) {
+		fd.Slice = false
+		fd.CustomSlice = true
 		fd.Type = CustomType
 		return
 	}
@@ -161,7 +163,7 @@ func parseFieldsLocked(v reflect.Value) (Fields, error) {
 			}
 			f.Sizefrom = source.Index
 		}
-		if f.Len == -1 && f.Sizefrom == nil {
+		if f.Len == -1 && f.Sizefrom == nil && !f.CustomSlice {
 			return nil, fmt.Errorf("struc: field `%s` is a slice with no length or sizeof field", field.Name)
 		}
 		// recurse into nested structs

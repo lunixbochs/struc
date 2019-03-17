@@ -9,19 +9,20 @@ import (
 )
 
 type Field struct {
-	Name     string
-	Ptr      bool
-	Index    int
-	Type     Type
-	defType  Type
-	Array    bool
-	Slice    bool
-	Len      int
-	Order    binary.ByteOrder
-	Sizeof   []int
-	Sizefrom []int
-	Fields   Fields
-	kind     reflect.Kind
+	Name        string
+	Ptr         bool
+	Index       int
+	Type        Type
+	defType     Type
+	Array       bool
+	Slice       bool
+	Len         int
+	Order       binary.ByteOrder
+	Sizeof      []int
+	Sizefrom    []int
+	Fields      Fields
+	CustomSlice bool
+	kind        reflect.Kind
 }
 
 func (f *Field) String() string {
