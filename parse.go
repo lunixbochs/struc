@@ -93,7 +93,7 @@ func parseField(f reflect.StructField) (fd *Field, tag *strucTag, err error) {
 		abstract := reflect.TypeOf((*Custom)(nil)).Elem()
 		if reflect.PtrTo(f.Type.Elem()).Implements(abstract) {
 			// TODO:  slices/arrays of custom types don't work yet
-			panic(fmt.Sprint("slice of custom struct is not supported:", f.Type.String()))
+			panic(fmt.Sprint("array/slice of custom struct is not supported: ", f.Type.String()))
 		}
 	}
 	// Check custom types, allow custom struct containing a slice/array to process
