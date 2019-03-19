@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"io"
 	"reflect"
+	"runtime/debug"
 	"strconv"
 	"testing"
 )
@@ -44,7 +45,6 @@ func (i *Int3) String() string {
 }
 
 // Array of custom type
-// TODO: slices/arrays of custom types don't work yet
 type ArrayInt3Struct struct {
 	I [2]Int3
 }
@@ -164,6 +164,10 @@ func (ia *SliceUInt8) String() string {
 	panic("not implemented")
 }
 
+type ArrayOfUInt8Struct struct {
+	I [2]uint8
+}
+
 func TestCustomTypes(t *testing.T) {
 	testCases := []struct {
 		name        string
@@ -172,6 +176,28 @@ func TestCustomTypes(t *testing.T) {
 		expectBytes []byte
 		expectPanic bool // True for unimplemented features
 	}{
+		// Start custom type tests with unimplemented non custom types for
+		// comparison.
+		{
+			name:        "ArrayOfUInt8",
+			packObj:     [2]uint8{32, 64},
+			emptyObj:    [2]uint8{0, 0},
+			expectBytes: []byte{32, 64},
+			expectPanic: true, // Not implemented.
+		},
+		{
+			name:        "PointerToArrayOfUInt8",
+			packObj:     &[2]uint8{32, 64},
+			emptyObj:    &[2]uint8{0, 0},
+			expectBytes: []byte{32, 64},
+			expectPanic: true, // Not implemented.
+		},
+		{
+			name:        "ArrayOfUInt8Struct",
+			packObj:     &ArrayOfUInt8Struct{I: [2]uint8{32, 64}},
+			emptyObj:    &ArrayOfUInt8Struct{},
+			expectBytes: []byte{32, 64},
+		},
 		{
 			name:        "CustomType",
 			packObj:     newInt3(3),
@@ -191,20 +217,25 @@ func TestCustomTypes(t *testing.T) {
 			expectBytes: []byte{0, 0, 3},
 		},
 		{
-			// Test is wrong, but expectFail() is not available:
-			// https://github.com/golang/go/issues/25951
 			name:        "ArrayOfCustomType",
+			packObj:     [2]Int3{3, 4},
+			emptyObj:    [2]Int3{},
+			expectBytes: []byte{0, 0, 3, 0, 0, 4},
+			expectPanic: true, // Not implemented.
+		},
+		{
+			name:        "PointerToArrayOfCustomType",
 			packObj:     &[2]Int3{3, 4},
 			emptyObj:    &[2]Int3{},
-			expectBytes: []byte{0, 0, 0, 3, 0, 0, 0, 4}, // FIXME: INCORRECT, should panic.
-			//expectPanic: true,
+			expectBytes: []byte{0, 0, 3, 0, 0, 4},
+			expectPanic: true, // Not implemented.
 		},
 		{
 			name:        "ArrayOfCustomTypeStruct",
 			packObj:     &ArrayInt3Struct{[2]Int3{3, 4}},
 			emptyObj:    &ArrayInt3Struct{},
 			expectBytes: []byte{0, 0, 3, 0, 0, 4},
-			expectPanic: true, // Panic, because this is not implemented.
+			expectPanic: true, // FIXME: unexpected panic: Cannot resolve size of type:Custom
 		},
 		{
 			name:        "CustomTypeOfArrayOfUInt8",
@@ -225,14 +256,11 @@ func TestCustomTypes(t *testing.T) {
 			expectBytes: []byte{0, 0, 128, 0, 1, 0},
 		},
 		{
-			// FIXME: The panic() call is breaking this. It actually works correctly,
-			// which means the panic is partially incorrect. We need to either
-			// implement the ArrayOfCustomType correctly or panic() correctly.
 			name:        "CustomTypeOfArrayOfCustomTypeStruct",
 			packObj:     &DoubleInt3Struct{D: DoubleInt3{Int3(128), Int3(256)}},
 			emptyObj:    &DoubleInt3Struct{},
 			expectBytes: []byte{0, 0, 128, 0, 1, 0},
-			expectPanic: true,
+			expectPanic: true, // FIXME: unexpected panic: Cannot resolve size of type:Custom
 		},
 		{
 			name:        "CustomTypeOfSliceOfUInt8",
@@ -265,8 +293,10 @@ func TestCustomTypes(t *testing.T) {
 					}
 				} else {
 					if !test.expectPanic {
+						debug.PrintStack()
 						t.Fatal("unexpected panic:", r)
 					}
+					t.Log("expected panic:", r)
 				}
 			}()
 			var buf bytes.Buffer
