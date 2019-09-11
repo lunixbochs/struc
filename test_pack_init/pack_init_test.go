@@ -12,8 +12,8 @@ type Example struct {
 }
 
 // TestParallelPack checks whether Pack is goroutine-safe. Run it with -race flag.
-// Keep it as a single test in package since it is likely to be triggered on racy initialization
-// of global objects.
+// Keep it as a single test in package since it is likely to be triggered on initialization
+// of global objects reported as a data race by race detector.
 func TestParallelPack(t *testing.T) {
 	var wg sync.WaitGroup
 	val := Example{}

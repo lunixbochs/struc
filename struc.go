@@ -13,11 +13,9 @@ type Options struct {
 	Order     binary.ByteOrder
 }
 
-const defaultPtrSize = 32
-
 func (o *Options) Validate() error {
 	if o.PtrSize == 0 {
-		o.PtrSize = defaultPtrSize
+		o.PtrSize = 32
 	} else {
 		switch o.PtrSize {
 		case 8, 16, 32, 64:
@@ -28,8 +26,11 @@ func (o *Options) Validate() error {
 	return nil
 }
 
-var emptyOptions = &Options{
-	PtrSize: defaultPtrSize,
+var emptyOptions = &Options{}
+
+func init() {
+	// fill default values to avoid data race to be reported by race detector.
+	emptyOptions.Validate()
 }
 
 func prep(data interface{}) (reflect.Value, Packer, error) {
