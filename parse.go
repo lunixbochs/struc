@@ -9,7 +9,25 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unsafe"
 )
+
+var nativeEndian binary.ByteOrder
+
+func init() {
+	// from https://stackoverflow.com/a/53286786/332798
+	buf := [2]byte{}
+	*(*uint16)(unsafe.Pointer(&buf[0])) = uint16(0xABCD)
+
+	switch buf {
+	case [2]byte{0xCD, 0xAB}:
+		nativeEndian = binary.LittleEndian
+	case [2]byte{0xAB, 0xCD}:
+		nativeEndian = binary.BigEndian
+	default:
+		panic("Could not determine native endianness.")
+	}
+}
 
 // struc:"int32,big,sizeof=Data,skip,sizefrom=Len"
 
@@ -43,6 +61,8 @@ func parseStrucTag(tag reflect.StructTag) *strucTag {
 			t.Order = binary.BigEndian
 		} else if s == "little" {
 			t.Order = binary.LittleEndian
+		} else if s == "native" {
+			t.Order = nativeEndian
 		} else if s == "skip" {
 			t.Skip = true
 		} else {
