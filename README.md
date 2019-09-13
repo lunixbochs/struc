@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/lunixbochs/struc.svg?branch=master)](https://travis-ci.org/lunixbochs/struc)
+[![Build Status](https://travis-ci.org/lunixbochs/struc.svg?branch=master)](https://travis-ci.org/lunixbochs/struc) [![GoDoc](https://godoc.org/github.com/lunixbochs/struc?status.svg)](https://godoc.org/github.com/lunixbochs/struc)
 
 struc
 ====
