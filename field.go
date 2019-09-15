@@ -76,11 +76,12 @@ func (f *Field) Size(val reflect.Value, options *Options) int {
 	return size
 }
 
-func (f *Field) packVal(buf []byte, val reflect.Value, length int, options *Options) (size int, err error) {
+func (f *Field) packVal(buf []byte, ival reflect.Value, length int, options *Options) (size int, err error) {
 	order := f.Order
 	if options.Order != nil {
 		order = options.Order
 	}
+	val := ival
 	if f.Ptr {
 		val = val.Elem()
 	}
@@ -99,7 +100,11 @@ func (f *Field) packVal(buf []byte, val reflect.Value, length int, options *Opti
 				n = 0
 			}
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			n = uint64(val.Int())
+			if f.Ptr && ival.IsNil() {
+				n = 0
+			} else {
+				n = uint64(val.Int())
+			}
 		default:
 			n = val.Uint()
 		}
