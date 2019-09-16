@@ -28,6 +28,11 @@ func (o *Options) Validate() error {
 
 var emptyOptions = &Options{}
 
+func init() {
+	// fill default values to avoid data race to be reported by race detector.
+	emptyOptions.Validate()
+}
+
 func prep(data interface{}) (reflect.Value, Packer, error) {
 	value := reflect.ValueOf(data)
 	for value.Kind() == reflect.Ptr {
