@@ -77,6 +77,85 @@ type Example struct {
 
 var five = 5
 
+type ExampleStructWithin struct {
+	a uint8
+}
+
+type ExampleSlice struct {
+	PropsLen uint8 `struc:"sizeof=Props"`
+	Props    []ExampleStructWithin
+}
+
+type ExampleArray struct {
+	PropsLen uint8
+	Props    [16]ExampleStructWithin `struc:"[16]ExampleStructWithin"`
+}
+
+var arraySliceReferenceBytes = []byte{
+	16,
+	0, 0, 0, 1,
+	0, 0, 0, 1,
+	0, 0, 0, 2,
+	0, 0, 0, 3,
+	0, 0, 0, 4,
+	0, 0, 0, 5,
+	0, 0, 0, 6,
+	0, 0, 0, 7,
+	0, 0, 0, 8,
+	0, 0, 0, 9,
+	0, 0, 0, 10,
+	0, 0, 0, 11,
+	0, 0, 0, 12,
+	0, 0, 0, 13,
+	0, 0, 0, 14,
+	0, 0, 0, 15,
+	0, 0, 0, 16,
+}
+
+var arrayReference = &ExampleArray{
+	16,
+	[16]ExampleStructWithin{
+		ExampleStructWithin{1},
+		ExampleStructWithin{2},
+		ExampleStructWithin{3},
+		ExampleStructWithin{4},
+		ExampleStructWithin{5},
+		ExampleStructWithin{6},
+		ExampleStructWithin{7},
+		ExampleStructWithin{8},
+		ExampleStructWithin{9},
+		ExampleStructWithin{10},
+		ExampleStructWithin{11},
+		ExampleStructWithin{12},
+		ExampleStructWithin{13},
+		ExampleStructWithin{14},
+		ExampleStructWithin{15},
+		ExampleStructWithin{16},
+	},
+}
+
+var sliceReference = &ExampleSlice{
+	16,
+	[]ExampleStructWithin{
+		ExampleStructWithin{1},
+		ExampleStructWithin{2},
+		ExampleStructWithin{3},
+		ExampleStructWithin{4},
+		ExampleStructWithin{5},
+		ExampleStructWithin{6},
+		ExampleStructWithin{7},
+		ExampleStructWithin{8},
+		ExampleStructWithin{9},
+		ExampleStructWithin{10},
+		ExampleStructWithin{11},
+		ExampleStructWithin{12},
+		ExampleStructWithin{13},
+		ExampleStructWithin{14},
+		ExampleStructWithin{15},
+		ExampleStructWithin{16},
+	},
+}
+
 var reference = &Example{
 	nil,
 	1, 2, 3, 4, 5, 6, 7, 8, 0, []byte{'a', 'b', 'c', 'd'},

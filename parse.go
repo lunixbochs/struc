@@ -113,7 +113,7 @@ func parseField(f reflect.StructField) (fd *Field, tag *strucTag, err error) {
 		if defTypeOk {
 			fd.Type = fd.defType
 		} else {
-			err = errors.New("struc: Could not find field type.")
+			err = errors.New(fmt.Sprintf("struc: Could not resolve field '%v' type '%v'.", f.Name, f.Type))
 		}
 	}
 	return

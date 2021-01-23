@@ -14,6 +14,44 @@ type BenchExample struct {
 	Length  int32
 }
 
+func BenchmarkArrayEncode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var buf bytes.Buffer
+		if err := Pack(&buf, arrayReference); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkSliceEncode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var buf bytes.Buffer
+		if err := Pack(&buf, sliceReference); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkArrayDecode(b *testing.B) {
+	var out ExampleArray
+	for i := 0; i < b.N; i++ {
+		buf := bytes.NewBuffer(arraySliceReferenceBytes)
+		if err := Unpack(buf, &out); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkSliceDecode(b *testing.B) {
+	var out ExampleSlice
+	for i := 0; i < b.N; i++ {
+		buf := bytes.NewBuffer(arraySliceReferenceBytes)
+		if err := Unpack(buf, &out); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 type BenchStrucExample struct {
 	Test    [5]byte `struc:"[5]byte"`
 	A       int     `struc:"int32"`

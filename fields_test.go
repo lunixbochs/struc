@@ -57,3 +57,25 @@ func TestFieldsSizefromBad(t *testing.T) {
 	}()
 	Pack(&buf, &test)
 }
+
+type StructWithinArray struct {
+	a uint32
+}
+
+type StructHavingArray struct {
+	Props [1]StructWithinArray `struc:"[1]StructWithinArray"`
+}
+
+func TestStrucArray(t *testing.T) {
+	var buf bytes.Buffer
+	a := &StructHavingArray{[1]StructWithinArray{}}
+	err := Pack(&buf, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := &StructHavingArray{}
+	err = Unpack(&buf, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
