@@ -312,6 +312,7 @@ func TestSliceUnderrun(t *testing.T) {
 
 type dynamic struct {
 	Buf []byte
+	V   int
 }
 
 func TestParse(t *testing.T) {
@@ -319,7 +320,7 @@ func TestParse(t *testing.T) {
 	{
 		dm := &dynamic{Buf: make([]byte, 3)}
 
-		r := strings.NewReader("123")
+		r := strings.NewReader("1231234")
 
 		err := Unpack(r, dm)
 
@@ -335,7 +336,7 @@ func TestParse(t *testing.T) {
 	{
 
 		dm := &dynamic{Buf: make([]byte, 2)}
-		r := strings.NewReader("123")
+		r := strings.NewReader("1231234")
 
 		err := Unpack(r, dm)
 
@@ -351,12 +352,20 @@ func TestParse(t *testing.T) {
 	{
 
 		dm := &dynamic{}
-		r := strings.NewReader("123")
+		r := strings.NewReader("12334")
 
 		err := Unpack(r, dm)
 
-		if err == nil {
+		if err != nil {
 			t.Fatal("missing size of []byte")
+		}
+
+		if len(dm.Buf) != 0 {
+			t.Fatal("mismatch size of []byte")
+		}
+
+		if dm.V == 0 {
+			t.Fatal("mismatch size of []byte")
 		}
 	}
 }

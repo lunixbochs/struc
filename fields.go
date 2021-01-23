@@ -128,9 +128,9 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value, options *Options) error {
 
 			length = v.Len()
 
-			if length == 0 {
-				return fmt.Errorf("struc: field `%s` is a slice with no length or sizeof field", field.Name)
-			}
+			// if length == 0 {
+			// 	return fmt.Errorf("struc: field `%s` is a slice with no length or sizeof field", field.Name)
+			// }
 		}
 
 		if v.Kind() == reflect.Ptr && !v.Elem().IsValid() {
