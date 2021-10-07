@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -306,5 +307,65 @@ func TestSliceUnderrun(t *testing.T) {
 	}
 	if err := Pack(&buf, &v); err != nil {
 		t.Fatal(err)
+	}
+}
+
+type dynamic struct {
+	Buf []byte
+	V   int
+}
+
+func TestParse(t *testing.T) {
+
+	{
+		dm := &dynamic{Buf: make([]byte, 3)}
+
+		r := strings.NewReader("1231234")
+
+		err := Unpack(r, dm)
+
+		if string(dm.Buf) != "123" {
+			t.Fatal("invalid len")
+		}
+
+		if err != nil {
+			t.Fatal("unable to parse this one!")
+		}
+	}
+
+	{
+
+		dm := &dynamic{Buf: make([]byte, 2)}
+		r := strings.NewReader("1231234")
+
+		err := Unpack(r, dm)
+
+		if string(dm.Buf) != "12" {
+			t.Fatal("invalid len")
+		}
+
+		if err != nil {
+			t.Fatal("unable to parse this one!")
+		}
+	}
+
+	{
+
+		dm := &dynamic{}
+		r := strings.NewReader("12334")
+
+		err := Unpack(r, dm)
+
+		if err != nil {
+			t.Fatal("missing size of []byte")
+		}
+
+		if len(dm.Buf) != 0 {
+			t.Fatal("mismatch size of []byte")
+		}
+
+		if dm.V == 0 {
+			t.Fatal("mismatch size of []byte")
+		}
 	}
 }
