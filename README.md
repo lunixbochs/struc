@@ -24,7 +24,7 @@ type Example struct {
 Struct tag format
 ----
 
- - ```Var []int `struc:"[]int32,little,sizeof=StringField"` ``` will pack Var as a slice of little-endian int32, and link it as the size of `StringField`.
+ - ```Var []int `struc:"[]int32,little,sizeof=Str"` ``` will pack Var as a slice of little-endian int32, and link it as the size of the `Str` field.
  - `sizeof=`: Indicates this field is a number used to track the length of a another field. `sizeof` fields are automatically updated on `Pack()` based on the current length of the tracked field, and are used to size the target field during `Unpack()`.
  - Bare values will be parsed as type and endianness.
 
