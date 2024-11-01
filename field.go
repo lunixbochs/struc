@@ -58,14 +58,14 @@ func (f *Field) Size(val reflect.Value, options *Options) int {
 		}
 	} else if typ == Pad {
 		size = f.Len
+	} else if typ == CustomType {
+		return val.Addr().Interface().(Custom).Size(options)
 	} else if f.Slice || f.kind == reflect.String {
 		length := val.Len()
 		if f.Len > 1 {
 			length = f.Len
 		}
 		size = length * typ.Size()
-	} else if typ == CustomType {
-		return val.Addr().Interface().(Custom).Size(options)
 	} else {
 		size = typ.Size()
 	}
