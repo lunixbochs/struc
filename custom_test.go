@@ -167,6 +167,42 @@ type ArrayOfUInt8Struct struct {
 	I [2]uint8
 }
 
+// Custom 4-character fixed string, similar to CHAR(4) in SQL.
+type Char4 string
+
+func (*Char4) Size(opt *Options) int {
+	return 4
+}
+
+func (c *Char4) Pack(p []byte, opt *Options) (int, error) {
+	buf := []byte(*c)
+	buf = append(buf, make([]byte, c.Size(nil)-len(buf))...)
+
+	copy(p, buf)
+	return len(buf), nil
+}
+
+func (c *Char4) Unpack(r io.Reader, length int, opt *Options) error {
+	buf := bytes.Buffer{}
+	if _, err := buf.ReadFrom(r); err != nil {
+		if err == io.EOF {
+			return io.ErrUnexpectedEOF
+		}
+		return err
+	}
+
+	*c = Char4(buf.String())
+	return nil
+}
+
+func (c *Char4) String() string {
+	return string(*c)
+}
+
+type Char4Struct struct {
+	C Char4
+}
+
 func TestCustomTypes(t *testing.T) {
 	testCases := []struct {
 		name        string
@@ -282,6 +318,12 @@ func TestCustomTypes(t *testing.T) {
 			expectBytes: []byte{128, 64, 32, 0, 192},
 			skip:        true, // Not implemented.
 		},
+		{
+			name:        "CustomTypeOfChar4Struct",
+			packObj:     &Char4Struct{C: Char4("foo\x00")},
+			emptyObj:    &Char4Struct{},
+			expectBytes: []byte{102, 111, 111, 0},
+		},
 	}
 
 	for _, test := range testCases {
@@ -291,6 +333,7 @@ func TestCustomTypes(t *testing.T) {
 			defer func() {
 				if r := recover(); r != nil {
 					t.Log("unexpected panic:", r)
+					t.Error(r)
 				}
 			}()
 			if test.skip {
