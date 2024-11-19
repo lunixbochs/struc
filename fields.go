@@ -103,24 +103,42 @@ func (f Fields) Pack(buf []byte, val reflect.Value, options *Options) (int, erro
 }
 
 func (f Fields) Unpack(r io.Reader, val reflect.Value, options *Options) error {
+
 	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	}
+
 	var tmp [8]byte
 	var buf []byte
+
 	for i, field := range f {
+
 		if field == nil {
 			continue
 		}
+
 		v := val.Field(i)
+
 		length := field.Len
 		if field.Sizefrom != nil {
 			length = f.sizefrom(val, field.Sizefrom)
 		}
+
+		if length == -1 {
+
+			length = v.Len()
+
+			// if length == 0 {
+			// 	return fmt.Errorf("struc: field `%s` is a slice with no length or sizeof field", field.Name)
+			// }
+		}
+
 		if v.Kind() == reflect.Ptr && !v.Elem().IsValid() {
 			v.Set(reflect.New(v.Type().Elem()))
 		}
+
 		if field.Type == Struct {
+
 			if field.Slice {
 				vals := v
 				if !field.Array {
@@ -140,6 +158,7 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value, options *Options) error {
 					v.Set(vals)
 				}
 			} else {
+
 				// TODO: DRY (we repeat the inner loop above)
 				fields, err := parseFields(v)
 				if err != nil {
@@ -151,6 +170,7 @@ func (f Fields) Unpack(r io.Reader, val reflect.Value, options *Options) error {
 			}
 			continue
 		} else {
+
 			typ := field.Type.Resolve(options)
 			if typ == CustomType {
 				if err := v.Addr().Interface().(Custom).Unpack(r, length, options); err != nil {

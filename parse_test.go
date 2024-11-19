@@ -40,15 +40,15 @@ func TestBadSizeof(t *testing.T) {
 	}
 }
 
-type missingSize struct {
-	Test []byte
-}
+// type missingSize struct {
+// 	Test []byte
+// }
 
-func TestMissingSize(t *testing.T) {
-	if err := parseTest(&missingSize{}); err == nil {
-		t.Fatal("failed to error on missing field size")
-	}
-}
+// func TestMissingSize(t *testing.T) {
+// 	if err := parseTest(&missingSize{}); err == nil {
+// 		t.Fatal("failed to error on missing field size")
+// 	}
+// }
 
 type badNested struct {
 	Empty empty

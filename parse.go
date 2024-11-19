@@ -120,28 +120,39 @@ func parseField(f reflect.StructField) (fd *Field, tag *strucTag, err error) {
 }
 
 func parseFieldsLocked(v reflect.Value) (Fields, error) {
+
 	// we need to repeat this logic because parseFields() below can't be recursively called due to locking
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
+
 	t := v.Type()
+
 	if v.NumField() < 1 {
 		return nil, errors.New("struc: Struct has no fields.")
 	}
+
 	sizeofMap := make(map[string][]int)
 	fields := make(Fields, v.NumField())
+
 	for i := 0; i < t.NumField(); i++ {
+
 		field := t.Field(i)
+
 		f, tag, err := parseField(field)
+
 		if tag.Skip {
 			continue
 		}
+
 		if err != nil {
 			return nil, err
 		}
+
 		if !v.Field(i).CanSet() {
 			continue
 		}
+
 		f.Index = i
 		if tag.Sizeof != "" {
 			target, ok := t.FieldByName(tag.Sizeof)
@@ -151,9 +162,11 @@ func parseFieldsLocked(v reflect.Value) (Fields, error) {
 			f.Sizeof = target.Index
 			sizeofMap[tag.Sizeof] = field.Index
 		}
+
 		if sizefrom, ok := sizeofMap[field.Name]; ok {
 			f.Sizefrom = sizefrom
 		}
+
 		if tag.Sizefrom != "" {
 			source, ok := t.FieldByName(tag.Sizefrom)
 			if !ok {
@@ -161,9 +174,14 @@ func parseFieldsLocked(v reflect.Value) (Fields, error) {
 			}
 			f.Sizefrom = source.Index
 		}
+
 		if f.Len == -1 && f.Sizefrom == nil {
-			return nil, fmt.Errorf("struc: field `%s` is a slice with no length or sizeof field", field.Name)
+			// f.Len = v.Field(i).Len()
+			// if f.Len == 0 {
+			// 	return nil, fmt.Errorf("struc: field `%s` is a slice with no length or sizeof field", field.Name)
+			// }
 		}
+
 		// recurse into nested structs
 		// TODO: handle loops (probably by indirecting the []Field and putting pointer in cache)
 		if f.Type == Struct {
@@ -179,8 +197,10 @@ func parseFieldsLocked(v reflect.Value) (Fields, error) {
 				return nil, err
 			}
 		}
+
 		fields[i] = f
 	}
+
 	return fields, nil
 }
 
@@ -189,18 +209,23 @@ var fieldCacheLock sync.RWMutex
 var parseLock sync.Mutex
 
 func fieldCacheLookup(t reflect.Type) Fields {
+
 	fieldCacheLock.RLock()
 	defer fieldCacheLock.RUnlock()
+
 	if cached, ok := fieldCache[t]; ok {
 		return cached
 	}
+
 	return nil
 }
 
 func parseFields(v reflect.Value) (Fields, error) {
+
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
+
 	t := v.Type()
 
 	// fast path: hopefully the field parsing is already cached
@@ -220,11 +245,14 @@ func parseFields(v reflect.Value) (Fields, error) {
 
 	// no luck, time to parse and fill the cache ourselves
 	fields, err := parseFieldsLocked(v)
+
 	if err != nil {
 		return nil, err
 	}
+
 	fieldCacheLock.Lock()
 	fieldCache[t] = fields
 	fieldCacheLock.Unlock()
+
 	return fields, nil
 }

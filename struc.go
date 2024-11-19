@@ -34,7 +34,9 @@ func init() {
 }
 
 func prep(data interface{}) (reflect.Value, Packer, error) {
+
 	value := reflect.ValueOf(data)
+
 	for value.Kind() == reflect.Ptr {
 		next := value.Elem().Kind()
 		if next == reflect.Struct || next == reflect.Ptr {
@@ -43,17 +45,23 @@ func prep(data interface{}) (reflect.Value, Packer, error) {
 			break
 		}
 	}
+
 	switch value.Kind() {
 	case reflect.Struct:
+
 		fields, err := parseFields(value)
 		return value, fields, err
+
 	default:
+
 		if !value.IsValid() {
 			return reflect.Value{}, nil, fmt.Errorf("Invalid reflect.Value for %+v", data)
 		}
+
 		if c, ok := data.(Custom); ok {
 			return value, customFallback{c}, nil
 		}
+
 		return value, binaryFallback(value), nil
 	}
 }
