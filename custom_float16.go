@@ -7,72 +7,107 @@ import (
 	"strconv"
 )
 
+// Float16 表示一个16位浮点数, 内部使用 float64 存储以获得更好的计算精度
+// 但在序列化和反序列化时使用16位格式
+//
+// 格式 (IEEE 754-2008 binary16):
+// 1 位: 符号位 (0=正数, 1=负数)
+// 5 位: 指数位 (偏移值为15)
+// 10 位: 小数位 (隐含前导1)
 type Float16 float64
 
-func (f *Float16) Pack(p []byte, opt *Options) (int, error) {
-	order := opt.Order
-	if order == nil {
-		order = binary.BigEndian
+// Pack 将 Float16 值序列化为16位二进制格式
+// 二进制格式遵循 IEEE 754-2008 binary16 规范
+// 支持特殊值：±0, ±∞, NaN
+func (f *Float16) Pack(buffer []byte, options *Options) (int, error) {
+	if len(buffer) < 2 {
+		return 0, io.ErrShortBuffer
 	}
-	sign := uint16(0)
-	if *f < 0 {
-		sign = 1
+
+	byteOrder := options.Order
+	if byteOrder == nil {
+		byteOrder = binary.BigEndian
 	}
-	var frac, exp uint16
-	if math.IsInf(float64(*f), 0) {
-		exp = 0x1f
-		frac = 0
-	} else if math.IsNaN(float64(*f)) {
-		exp = 0x1f
-		frac = 1
-	} else {
-		bits := math.Float64bits(float64(*f))
-		exp64 := (bits >> 52) & 0x7ff
-		if exp64 != 0 {
-			exp = uint16((exp64 - 1023 + 15) & 0x1f)
+
+	// 此转换基于 github.com/stdlib-js/math-float64-to-float16
+	// 能正确处理特殊值并将次正规数刷新为零
+	bits := math.Float64bits(float64(*f))
+
+	sign := uint16((bits >> 48) & 0x8000)
+	exp := int((bits >> 52) & 0x07FF)
+	mant := bits & 0x000FFFFFFFFFFFFF
+
+	var res uint16
+	if exp == 0x07FF { // NaN or Inf
+		res = sign | 0x7C00
+		if mant != 0 { // NaN
+			res |= 0x0200 // 确保尾数非零
 		}
-		frac = uint16((bits >> 42) & 0x3ff)
+	} else {
+		// 重新偏移指数
+		exp = exp - 1023 + 15
+		if exp >= 0x1F { // 上溢
+			res = sign | 0x7C00
+		} else if exp <= 0 { // 下溢, 刷新为零
+			res = sign
+		} else { // 正常数字
+			mant >>= 42
+			res = sign | uint16(exp<<10) | uint16(mant)
+		}
 	}
-	var out uint16
-	out |= sign << 15
-	out |= exp << 10
-	out |= frac & 0x3ff
-	order.PutUint16(p, out)
+
+	byteOrder.PutUint16(buffer, res)
 	return 2, nil
 }
-func (f *Float16) Unpack(r io.Reader, length int, opt *Options) error {
-	order := opt.Order
-	if order == nil {
-		order = binary.BigEndian
+
+// Unpack 将16位二进制格式反序列化为 Float16 值
+// 二进制格式遵循 IEEE 754-2008 binary16 规范
+// 支持特殊值：±0, ±∞, NaN
+func (f *Float16) Unpack(reader io.Reader, length int, options *Options) error {
+	var buffer [2]byte
+
+	// 获取字节序，如果未指定则使用大端序
+	byteOrder := options.Order
+	if byteOrder == nil {
+		byteOrder = binary.BigEndian
 	}
-	var tmp [2]byte
-	if _, err := r.Read(tmp[:]); err != nil {
+
+	// 读取2字节数据
+	if _, err := io.ReadFull(reader, buffer[:]); err != nil {
 		return err
 	}
-	val := order.Uint16(tmp[:2])
-	sign := (val >> 15) & 1
-	exp := int16((val >> 10) & 0x1f)
-	frac := val & 0x3ff
-	if exp == 0x1f {
-		if frac != 0 {
-			*f = Float16(math.NaN())
-		} else {
-			*f = Float16(math.Inf(int(sign)*-2 + 1))
+
+	value := byteOrder.Uint16(buffer[:])
+
+	sign := uint64(value>>15) & 1
+	exp16 := (value >> 10) & 0x1f
+	mant16 := value & 0x3ff
+
+	var bits64 uint64
+	if exp16 == 0x1f { // Inf or NaN
+		bits64 = sign<<63 | uint64(0x7ff)<<52
+		if mant16 != 0 {
+			bits64 |= 1 << 51 // 设为 quiet NaN
 		}
-	} else {
-		var bits uint64
-		bits |= uint64(sign) << 63
-		bits |= uint64(frac) << 42
-		if exp > 0 {
-			bits |= uint64(exp-15+1023) << 52
-		}
-		*f = Float16(math.Float64frombits(bits))
+	} else if exp16 == 0 { // 零或次正规数 (刷新为零)
+		bits64 = sign << 63
+	} else { // 正常数字
+		exp64 := uint64(exp16) + 1023 - 15
+		mant64 := uint64(mant16)
+		bits64 = sign<<63 | exp64<<52 | mant64<<42
 	}
+
+	*f = Float16(math.Float64frombits(bits64))
 	return nil
 }
-func (f *Float16) Size(opt *Options) int {
+
+// Size 返回 Float16 的字节大小, 固定为2
+func (f *Float16) Size(options *Options) int {
 	return 2
 }
+
+// String 返回 Float16 值的字符串表示
+// 使用 'g' 格式和32位精度进行格式化
 func (f *Float16) String() string {
 	return strconv.FormatFloat(float64(*f), 'g', -1, 32)
 }

@@ -5,33 +5,39 @@ import (
 	"reflect"
 )
 
+// Type 定义了支持的数据类型枚举
 type Type int
 
 const (
-	Invalid Type = iota
-	Pad
-	Bool
-	Int
-	Int8
-	Uint8
-	Int16
-	Uint16
-	Int32
-	Uint32
-	Int64
-	Uint64
-	Float32
-	Float64
-	String
-	Struct
-	Ptr
-
-	SizeType
-	OffType
-	CustomType
+	Invalid    Type = iota // 无效类型
+	Pad                    // 填充类型
+	Bool                   // 布尔类型
+	Int                    // 整数类型
+	Int8                   // 8位整数
+	Uint8                  // 8位无符号整数
+	Int16                  // 16位整数
+	Uint16                 // 16位无符号整数
+	Int32                  // 32位整数
+	Uint32                 // 32位无符号整数
+	Int64                  // 64位整数
+	Uint64                 // 64位无符号整数
+	Float32                // 32位浮点数
+	Float64                // 64位浮点数
+	String                 // 字符串类型
+	Struct                 // 结构体类型
+	Ptr                    // 指针类型
+	SizeType               // size_t 类型
+	OffType                // off_t 类型
+	CustomType             // 自定义类型
 )
 
+// Resolve 根据选项解析实际类型
+// 主要用于处理 SizeType 和 OffType 这样的平台相关类型
 func (t Type) Resolve(options *Options) Type {
+	if t != OffType && t != SizeType {
+		return t
+	}
+
 	switch t {
 	case OffType:
 		switch options.PtrSize {
@@ -63,10 +69,19 @@ func (t Type) Resolve(options *Options) Type {
 	return t
 }
 
-func (t Type) String() string {
-	return typeNames[t]
+func resolveTypeForOptions(t Type, options *Options) Type {
+	if t != OffType && t != SizeType {
+		return t
+	}
+	return t.Resolve(options)
 }
 
+// String 返回类型的字符串表示
+func (t Type) String() string {
+	return typeToString[t]
+}
+
+// Size 返回类型的字节大小
 func (t Type) Size() int {
 	switch t {
 	case SizeType, OffType:
@@ -79,12 +94,28 @@ func (t Type) Size() int {
 		return 4
 	case Int64, Uint64, Float64:
 		return 8
+	case Struct:
+		return 0 // 结构体大小需要通过字段计算
 	default:
 		panic("Cannot resolve size of type:" + t.String())
 	}
 }
 
-var typeLookup = map[string]Type{
+// IsBasicType 判断是否为基本类型
+// 基本类型包括：整数、浮点数、布尔值
+func (t Type) IsBasicType() bool {
+	switch t {
+	case Int8, Int16, Int32, Int64,
+		Uint8, Uint16, Uint32, Uint64,
+		Float32, Float64, Bool:
+		return true
+	default:
+		return false
+	}
+}
+
+// typeStrToType 定义了字符串到类型的映射关系
+var typeStrToType = map[string]Type{
 	"pad":     Pad,
 	"bool":    Bool,
 	"byte":    Uint8,
@@ -103,20 +134,38 @@ var typeLookup = map[string]Type{
 	"off_t":  OffType,
 }
 
-var typeNames = map[Type]string{
-	CustomType: "Custom",
+// typeToString 定义了类型到字符串的映射关系
+var typeToString = map[Type]string{
+	Invalid:    "invalid",
+	Pad:        "pad",
+	Bool:       "bool",
+	Int8:       "int8",
+	Int16:      "int16",
+	Int32:      "int32",
+	Int64:      "int64",
+	Uint8:      "uint8",
+	Uint16:     "uint16",
+	Uint32:     "uint32",
+	Uint64:     "uint64",
+	Float32:    "float32",
+	Float64:    "float64",
+	String:     "string",
+	Struct:     "struct",
+	Ptr:        "ptr",
+	SizeType:   "size_t",
+	OffType:    "off_t",
+	CustomType: "custom",
 }
 
-func init() {
-	for name, enum := range typeLookup {
-		typeNames[enum] = name
-	}
-}
-
+// Size_t 是平台相关的无符号整数类型，用于表示大小
 type Size_t uint64
+
+// Off_t 是平台相关的有符号整数类型，用于表示偏移量
 type Off_t int64
 
-var reflectTypeMap = map[reflect.Kind]Type{
+// typeKindToType 定义了 reflect.Kind 到 Type 的映射关系
+// 用于将 Go 的反射类型转换为 struc 包的类型系统
+var typeKindToType = map[reflect.Kind]Type{
 	reflect.Bool:    Bool,
 	reflect.Int8:    Int8,
 	reflect.Int16:   Int16,

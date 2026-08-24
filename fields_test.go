@@ -2,21 +2,84 @@ package struc
 
 import (
 	"bytes"
+	"encoding/binary"
 	"reflect"
 	"testing"
 )
 
-var refVal = reflect.ValueOf(reference)
+var testRefValue = reflect.ValueOf(testExample)
 
 func TestFieldsParse(t *testing.T) {
-	if _, err := parseFields(refVal); err != nil {
+	if _, err := parseFields(testRefValue); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestFieldsString(t *testing.T) {
-	fields, _ := parseFields(refVal)
-	fields.String()
+	tests := []struct {
+		name     string
+		fields   Fields
+		expected string
+	}{
+		{
+			name:     "Empty Fields",
+			fields:   Fields{},
+			expected: "{}",
+		},
+		{
+			name: "Single Pad Field",
+			fields: Fields{
+				{
+					Type:   Pad,
+					Length: 4,
+				},
+			},
+			expected: "{{type: pad, len: 4}}",
+		},
+		{
+			name: "Multiple Fields",
+			fields: Fields{
+				{
+					Name:      "Int32Field",
+					Type:      Int32,
+					ByteOrder: binary.BigEndian,
+				},
+				{
+					Name:   "StringField",
+					Type:   String,
+					Length: 10,
+				},
+				nil, // Test nil field handling
+				{},  // Test empty field handling
+			},
+			expected: "{{type: int32, order: BigEndian}, {type: string, len: 10}, , {type: invalid, len: 0}}",
+		},
+		{
+			name: "Fields with Sizeof and Sizefrom",
+			fields: Fields{
+				{
+					Name:   "Length",
+					Type:   Int32,
+					Sizeof: []int{1},
+				},
+				{
+					Name:     "Data",
+					Type:     String,
+					Sizefrom: []int{0},
+				},
+			},
+			expected: "{{type: int32, sizeof: [1]}, {type: string, sizefrom: [0]}}",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.fields.String()
+			if result != tt.expected {
+				t.Errorf("Fields.String() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
 }
 
 type sizefromStruct struct {

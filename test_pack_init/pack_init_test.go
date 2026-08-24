@@ -2,13 +2,14 @@ package test_pack_init
 
 import (
 	"bytes"
-	"github.com/lunixbochs/struc"
 	"sync"
 	"testing"
+
+	"github.com/shengyanli1982/struc/v2"
 )
 
 type Example struct {
-	I int `struc:int`
+	I int `struc:"int"`
 }
 
 // TestParallelPack checks whether Pack is goroutine-safe. Run it with -race flag.

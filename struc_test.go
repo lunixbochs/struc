@@ -74,7 +74,7 @@ type Example struct {
 	CustomTypeSizeArr []byte // "ABCD"
 }
 
-var five = 5
+var testFive = 5
 
 type ExampleStructWithin struct {
 	a uint8
@@ -90,7 +90,7 @@ type ExampleArray struct {
 	Props    [16]ExampleStructWithin `struc:"[16]ExampleStructWithin"`
 }
 
-var arraySliceReferenceBytes = []byte{
+var testArraySliceBytes = []byte{
 	16,
 	0, 0, 0, 1,
 	0, 0, 0, 1,
@@ -111,51 +111,51 @@ var arraySliceReferenceBytes = []byte{
 	0, 0, 0, 16,
 }
 
-var arrayReference = &ExampleArray{
+var testArrayExample = &ExampleArray{
 	16,
 	[16]ExampleStructWithin{
-		ExampleStructWithin{1},
-		ExampleStructWithin{2},
-		ExampleStructWithin{3},
-		ExampleStructWithin{4},
-		ExampleStructWithin{5},
-		ExampleStructWithin{6},
-		ExampleStructWithin{7},
-		ExampleStructWithin{8},
-		ExampleStructWithin{9},
-		ExampleStructWithin{10},
-		ExampleStructWithin{11},
-		ExampleStructWithin{12},
-		ExampleStructWithin{13},
-		ExampleStructWithin{14},
-		ExampleStructWithin{15},
-		ExampleStructWithin{16},
+		{1},
+		{2},
+		{3},
+		{4},
+		{5},
+		{6},
+		{7},
+		{8},
+		{9},
+		{10},
+		{11},
+		{12},
+		{13},
+		{14},
+		{15},
+		{16},
 	},
 }
 
-var sliceReference = &ExampleSlice{
+var testSliceExample = &ExampleSlice{
 	16,
 	[]ExampleStructWithin{
-		ExampleStructWithin{1},
-		ExampleStructWithin{2},
-		ExampleStructWithin{3},
-		ExampleStructWithin{4},
-		ExampleStructWithin{5},
-		ExampleStructWithin{6},
-		ExampleStructWithin{7},
-		ExampleStructWithin{8},
-		ExampleStructWithin{9},
-		ExampleStructWithin{10},
-		ExampleStructWithin{11},
-		ExampleStructWithin{12},
-		ExampleStructWithin{13},
-		ExampleStructWithin{14},
-		ExampleStructWithin{15},
-		ExampleStructWithin{16},
+		{1},
+		{2},
+		{3},
+		{4},
+		{5},
+		{6},
+		{7},
+		{8},
+		{9},
+		{10},
+		{11},
+		{12},
+		{13},
+		{14},
+		{15},
+		{16},
 	},
 }
 
-var reference = &Example{
+var testExample = &Example{
 	nil,
 	1, 2, 3, 4, 5, 6, 7, 8, 0, []byte{'a', 'b', 'c', 'd'},
 	9, 10, 11, 12, 13, 14, 15, 16, true, false, [4]byte{'e', 'f', 'g', 'h'},
@@ -168,13 +168,13 @@ var reference = &Example{
 	4, []byte("5678"),
 	7, "ijklmno", "pqrstuv",
 	4, []byte("5678"),
-	Nested{1}, &Nested{2}, &five,
+	Nested{1}, &Nested{2}, &testFive,
 	6, []Nested{{3}, {4}, {5}, {6}, {7}, {8}},
 	0,
 	Int3(4), []byte("ABCD"),
 }
 
-var referenceBytes = []byte{
+var testExampleBytes = []byte{
 	0, 0, 0, 0, 0, // pad(5)
 	1, 0, 2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, // fake int8-int64(1-4)
 	5, 6, 0, 7, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, // fake little-endian uint8-uint64(5-8)
@@ -215,49 +215,49 @@ var referenceBytes = []byte{
 
 func TestCodec(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Pack(&buf, reference); err != nil {
+	if err := Pack(&buf, testExample); err != nil {
 		t.Fatal(err)
 	}
 	out := &Example{}
 	if err := Unpack(&buf, out); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(reference, out) {
-		fmt.Printf("got: %#v\nwant: %#v\n", out, reference)
+	if !reflect.DeepEqual(testExample, out) {
+		fmt.Printf("got: %#v\nwant: %#v\n", out, testExample)
 		t.Fatal("encode/decode failed")
 	}
 }
 
 func TestEncode(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Pack(&buf, reference); err != nil {
+	if err := Pack(&buf, testExample); err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(buf.Bytes(), referenceBytes) {
-		fmt.Printf("got: %#v\nwant: %#v\n", buf.Bytes(), referenceBytes)
+	if !bytes.Equal(buf.Bytes(), testExampleBytes) {
+		fmt.Printf("got: %#v\nwant: %#v\n", buf.Bytes(), testExampleBytes)
 		t.Fatal("encode failed")
 	}
 }
 
 func TestDecode(t *testing.T) {
-	buf := bytes.NewReader(referenceBytes)
+	buf := bytes.NewReader(testExampleBytes)
 	out := &Example{}
 	if err := Unpack(buf, out); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(reference, out) {
-		fmt.Printf("got: %#v\nwant: %#v\n", out, reference)
+	if !reflect.DeepEqual(testExample, out) {
+		fmt.Printf("got: %#v\nwant: %#v\n", out, testExample)
 		t.Fatal("decode failed")
 	}
 }
 
 func TestSizeof(t *testing.T) {
-	size, err := Sizeof(reference)
+	size, err := Sizeof(testExample)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if size != len(referenceBytes) {
-		t.Fatalf("sizeof failed; expected %d, got %d", len(referenceBytes), size)
+	if size != len(testExampleBytes) {
+		t.Fatalf("sizeof failed; expected %d, got %d", len(testExampleBytes), size)
 	}
 }
 
@@ -268,11 +268,11 @@ type ExampleEndian struct {
 func TestEndianSwap(t *testing.T) {
 	var buf bytes.Buffer
 	big := &ExampleEndian{1}
-	if err := PackWithOrder(&buf, big, binary.BigEndian); err != nil {
+	if err := PackWithOptions(&buf, big, &Options{Order: binary.BigEndian}); err != nil {
 		t.Fatal(err)
 	}
 	little := &ExampleEndian{}
-	if err := UnpackWithOrder(&buf, little, binary.LittleEndian); err != nil {
+	if err := UnpackWithOptions(&buf, little, &Options{Order: binary.LittleEndian}); err != nil {
 		t.Fatal(err)
 	}
 	if little.T != 256 {
@@ -306,5 +306,102 @@ func TestSliceUnderrun(t *testing.T) {
 	}
 	if err := Pack(&buf, &v); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// P0-1 回归：按值传入结构体的 Pack 专用类型
+type packByValueStruct struct {
+	A uint32
+	B uint16
+}
+
+// TestPackByValueRoundTrip 回归 P0-1：按值 Pack 必须输出完整字节流，且 round-trip 与按指针一致
+func TestPackByValueRoundTrip(t *testing.T) {
+	in := packByValueStruct{A: 0x11223344, B: 0x5566}
+	expected := []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66}
+
+	// 按值 Pack
+	var byValue bytes.Buffer
+	if err := Pack(&byValue, in); err != nil {
+		t.Fatalf("pack by value failed: %v", err)
+	}
+	if !bytes.Equal(byValue.Bytes(), expected) {
+		t.Fatalf("pack by value = %x, want %x", byValue.Bytes(), expected)
+	}
+
+	// 按指针 Pack，输出必须与按值一致
+	var byPointer bytes.Buffer
+	if err := Pack(&byPointer, &in); err != nil {
+		t.Fatalf("pack by pointer failed: %v", err)
+	}
+	if !bytes.Equal(byPointer.Bytes(), byValue.Bytes()) {
+		t.Fatalf("pack by pointer = %x, differs from by value = %x", byPointer.Bytes(), byValue.Bytes())
+	}
+
+	// round-trip
+	out := &packByValueStruct{}
+	if err := Unpack(bytes.NewReader(byValue.Bytes()), out); err != nil {
+		t.Fatalf("unpack failed: %v", err)
+	}
+	if *out != in {
+		t.Fatalf("round trip = %+v, want %+v", *out, in)
+	}
+}
+
+// P0-1 回归：缓存污染顺序验证专用类型
+type packByValueCacheStruct struct {
+	A uint32
+	B uint16
+}
+
+// TestPackByValueThenPointerCache 回归 P0-1：先按值后按指针调用，类型缓存不得产生 0 字节结果
+func TestPackByValueThenPointerCache(t *testing.T) {
+	in := packByValueCacheStruct{A: 0x11223344, B: 0x5566}
+	expected := []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66}
+
+	// 先按值调用
+	var first bytes.Buffer
+	if err := Pack(&first, in); err != nil {
+		t.Fatalf("first pack by value failed: %v", err)
+	}
+	// 再按指针调用，缓存必须未被污染
+	var second bytes.Buffer
+	if err := Pack(&second, &in); err != nil {
+		t.Fatalf("second pack by pointer failed: %v", err)
+	}
+	if !bytes.Equal(first.Bytes(), expected) || !bytes.Equal(second.Bytes(), expected) {
+		t.Fatalf("type cache polluted: first = %x, second = %x, want %x", first.Bytes(), second.Bytes(), expected)
+	}
+
+	// GetFormatString 同样走 parseFields 缓存，按值与按指针结果必须一致
+	formatByValue, err := GetFormatString(packByValueCacheStruct{})
+	if err != nil {
+		t.Fatalf("GetFormatString by value failed: %v", err)
+	}
+	formatByPointer, err := GetFormatString(&packByValueCacheStruct{})
+	if err != nil {
+		t.Fatalf("GetFormatString by pointer failed: %v", err)
+	}
+	if formatByValue != formatByPointer || formatByValue == "" {
+		t.Fatalf("format string inconsistent: by value = %q, by pointer = %q", formatByValue, formatByPointer)
+	}
+}
+
+// TestUnpackByValueError 回归 P0-1：向不可设置（按值传入）的结构体 Unpack 必须返回明确错误
+func TestUnpackByValueError(t *testing.T) {
+	data := []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66}
+	if err := Unpack(bytes.NewReader(data), packByValueStruct{}); err == nil {
+		t.Fatal("expected error when unpacking into a non-settable struct value")
+	}
+}
+
+// TestUnsupportedTopLevelType 回归 P2-3/P2-4：不支持的顶层类型必须返回错误而不是 panic
+func TestUnsupportedTopLevelType(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Pack(&buf, map[string]int{}); err == nil {
+		t.Fatal("expected error when packing unsupported type")
+	}
+	if size, err := Sizeof(map[string]int{}); err == nil {
+		t.Fatalf("expected error for Sizeof of unsupported type, got size %d", size)
 	}
 }
